@@ -1,6 +1,6 @@
 """
 SentinelTI – Feed Ingestion & Async Enrichment
-Sources: Abuse.ch, CINS Army
+Sources: Abuse.ch, CINS Army, OTX AlienVault
 Enrichment: VirusTotal (optional), AbuseIPDB (rich), GeoIP + ASN
 """
 
@@ -15,10 +15,12 @@ logger = logging.getLogger("feeds")
 
 VT_KEY         = os.getenv("VIRUSTOTAL_API_KEY", "")
 ABUSEIPDB_KEY  = os.getenv("ABUSEIPDB_API_KEY", "")
+OTX_KEY        = os.getenv("OTX_API_KEY", "")
 
 SOURCE_SCORE = {
     "abuse.ch":  5,
     "CINS Army": 2,
+    "OTX":        4,
     "VirusTotal": 3,
     "AbuseIPDB":  3,
 }
@@ -82,11 +84,63 @@ def fetch_cins() -> list[dict]:
         return []
 
 
+
+def fetch_otx() -> list[dict]:
+    """
+    Fetch malicious IPs from OTX AlienVault subscribed pulses.
+    Returns up to 500 unique IP indicators with tags and malware families.
+    """
+    if not OTX_KEY:
+        logger.debug("OTX key not set – skipping")
+        return []
+
+    headers = {"X-OTX-API-KEY": OTX_KEY}
+    seen: set[str] = set()
+    out:  list[dict] = []
+
+    try:
+        # Get subscribed pulses (most recent 10)
+        url  = "https://otx.alienvault.com/api/v1/pulses/subscribed?limit=10&page=1"
+        resp = requests.get(url, headers=headers, timeout=15)
+        resp.raise_for_status()
+        pulses = resp.json().get("results", [])
+        logger.info(f"OTX: {len(pulses)} pulses fetched")
+
+        for pulse in pulses:
+            tags    = pulse.get("tags", [])
+            name    = pulse.get("name", "")
+            for ioc in pulse.get("indicators", []):
+                if ioc.get("type") not in ("IPv4", "IPv6"):
+                    continue
+                ip = ioc.get("indicator", "").strip()
+                if not ip or ip in seen:
+                    continue
+                try:
+                    ipaddress.ip_address(ip)
+                except ValueError:
+                    continue
+                seen.add(ip)
+                out.append({
+                    "indicator": ip,
+                    "sources":   ["OTX"],
+                    "score":     SOURCE_SCORE["OTX"],
+                    "risk":      risk_level(SOURCE_SCORE["OTX"]),
+                    "otx_pulse": name,
+                    "otx_tags":  tags,
+                })
+
+        logger.info(f"OTX: {len(out)} unique IPs extracted")
+        return out
+
+    except Exception as e:
+        logger.error(f"OTX fetch failed: {e}")
+        return []
+
 def fetch_base_indicators(limit: int = 200) -> list[dict]:
     """Merge, deduplicate, and cap at limit."""
     seen: dict[str, dict] = {}
 
-    for ioc in fetch_abuse_ch() + fetch_cins():
+    for ioc in fetch_abuse_ch() + fetch_cins() + fetch_otx():
         ip = ioc["indicator"]
         if ip not in seen:
             seen[ip] = ioc
