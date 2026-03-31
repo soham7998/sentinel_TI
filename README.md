@@ -45,37 +45,6 @@ SOC Dashboard (LOW / MEDIUM / HIGH — Evidence-based Decisions)
   - [AbuseIPDB](https://www.abuseipdb.com/register)
   - [VirusTotal](https://www.virustotal.com/gui/join-us)
 
-### 1. Clone
-```bash
-git clone https://github.com/soham7998/sentinel_TI.git
-cd sentinel_TI
-```
-
-### 2. Configure environment
-```bash
-cp .env.sample .env
-# Edit .env and add your API keys
-```
-
-`.env` format:
-```
-ABUSEIPDB_API_KEY=your_key_here
-VIRUSTOTAL_API_KEY=your_key_here
-OTX_API_KEY=
-```
-
-### 3. Build and run
-```bash
-docker-compose build
-docker-compose up -d
-```
-
-### 4. Open dashboard
-```
-http://localhost:8501
-```
-
----
 
 ## 🖥️ Dashboard Tabs
 
