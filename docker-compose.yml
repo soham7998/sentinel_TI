@@ -1,5 +1,4 @@
 version: "3.3"
-
 services:
   backend:
     build: ./backend
@@ -15,6 +14,10 @@ services:
       VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY}
     volumes:
       - ./geoip:/app/geoip
+      # Mount source files so code changes don't need a rebuild
+      - ./backend/main.py:/app/main.py
+      - ./backend/feeds.py:/app/feeds.py
+      - ./backend/ml_model.py:/app/ml_model.py
 
   frontend:
     build: ./frontend
@@ -25,6 +28,9 @@ services:
       - backend
     environment:
       BACKEND_URL: http://backend:8000
+    # Mount source so UI changes reflect with just a rerun
+    volumes:
+      - ./frontend/app.py:/app/app.py
 
   mongodb:
     image: mongo:6.0
