@@ -113,8 +113,7 @@ function toggleSidebar() {
         console.log("Sidebar toggle not found");
     }
 }
-</script>
-""", unsafe_allow_html=True)
+</script>, unsafe_allow_html=True)
 .block-container{padding:0 1rem 3.5rem 1rem!important;max-width:100%!important;}
 [data-testid="stSidebar"]{background:#0d1117!important;border-right:2px solid #21e06a33!important;}
 [data-testid="stSidebar"] .stButton>button{background:#161b22!important;border:1px solid #30363d!important;color:#c9d1d9!important;font-size:0.75rem!important;border-radius:4px!important;width:100%!important;margin-bottom:6px!important;padding:8px!important;text-align:left!important;}
