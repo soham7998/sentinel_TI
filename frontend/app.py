@@ -63,13 +63,65 @@ header [data-testid="stStatusWidget"] {
     fill: #21e06a !important;
     color: #21e06a !important;
 }
+/* ───────── CUSTOM SIDEBAR TOGGLE (CENTER LEFT) ───────── */
+#sentinel-toggle {
+    position: fixed;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    z-index: 99999;
+
+    width: 42px;
+    height: 64px;
+
+    background: #0d1117;
+    border: 2px solid #21e06a;
+    border-left: none;
+    border-radius: 0 10px 10px 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+}
+
+/* arrow */
+#sentinel-toggle span {
+    display: block;
+    color: #21e06a;
+    font-size: 18px;
+}
+
+/* hover */
+#sentinel-toggle:hover {
+    background: #21e06a22;
+}
+<div id="sentinel-toggle" onclick="toggleSidebar()">
+    <span>❯</span>
+</div>
+
+<script>
+function toggleSidebar() {
+    const btn =
+        window.parent.document.querySelector('[aria-label="Toggle sidebar"]') ||
+        window.parent.document.querySelector('[data-testid="stSidebarCollapseButton"]');
+
+    if (btn) {
+        btn.click();
+    } else {
+        console.log("Sidebar toggle not found");
+    }
+}
+</script>
+""", unsafe_allow_html=True)
 .block-container{padding:0 1rem 3.5rem 1rem!important;max-width:100%!important;}
 [data-testid="stSidebar"]{background:#0d1117!important;border-right:2px solid #21e06a33!important;}
 [data-testid="stSidebar"] .stButton>button{background:#161b22!important;border:1px solid #30363d!important;color:#c9d1d9!important;font-size:0.75rem!important;border-radius:4px!important;width:100%!important;margin-bottom:6px!important;padding:8px!important;text-align:left!important;}
 [data-testid="stSidebar"] .stButton>button:hover{border-color:#21e06a!important;color:#21e06a!important;}
-[data-testid="collapsedControl"]{display:flex!important;visibility:visible!important;background:#0d1117!important;border:2px solid #21e06a!important;border-left:none!important;border-radius:0 8px 8px 0!important;width:28px!important;align-items:center!important;justify-content:center!important;}
-[data-testid="collapsedControl"]:hover{background:#21e06a22!important;}
-[data-testid="collapsedControl"] svg{fill:#21e06a!important;color:#21e06a!important;}
+# [data-testid="collapsedControl"]{display:flex!important;visibility:visible!important;background:#0d1117!important;border:2px solid #21e06a!important;border-left:none!important;border-radius:0 8px 8px 0!important;width:28px!important;align-items:center!important;justify-content:center!important;}
+# [data-testid="collapsedControl"]:hover{background:#21e06a22!important;}
+# [data-testid="collapsedControl"] svg{fill:#21e06a!important;color:#21e06a!important;}
 .cmd-bar{background:linear-gradient(90deg,#0d1117,#161b22);border-bottom:1px solid #21e06a22;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;margin:-1rem -1rem 1rem -1rem;}
 .cmd-logo{font-size:1.1rem;font-weight:800;letter-spacing:2px;color:#21e06a;}
 .cmd-sub{font-size:0.65rem;color:#58a6ff;letter-spacing:1px;}
@@ -151,102 +203,37 @@ def now_utc():
     ist = utc + timedelta(hours=5, minutes=30)
     return f"{utc.strftime('%H:%M:%S')} UTC  ·  {ist.strftime('%H:%M:%S')} IST"
 
+
 def render_footer():
-    st.markdown("""
-    <div style="
-        position:fixed;
-        bottom:0;
-        left:0;
-        right:0;
-        z-index:9998;
-
-        background:#0d1117;
-        border-top:1px solid #21e06a33;
-
-        height:48px;
-        padding:0 20px;
-
-        display:flex;
-        align-items:center;
-        justify-content:space-between;
-        font-size:0.65rem;
-    ">
-
-        <!-- LEFT SIDE -->
-        <div style="display:flex;align-items:center;gap:14px;">
-
-            <!-- LinkedIn -->
-            <a href="https://www.linkedin.com/in/shahsoham2003/" target="_blank"
-               style="color:#8b949e;text-decoration:none;display:flex;align-items:center;gap:6px;"
-               onmouseover="this.style.color='#0a66c2'"
-               onmouseout="this.style.color='#8b949e'">
-                <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M19 0h-14c-2.8..."/>
-                </svg>
-                LinkedIn
-            </a>
-
-            <!-- GitHub -->
-            <a href="https://github.com/soham7998/sentinel_TI" target="_blank"
-               style="color:#8b949e;text-decoration:none;display:flex;align-items:center;gap:6px;"
-               onmouseover="this.style.color='#ffffff'"
-               onmouseout="this.style.color='#8b949e'">
-                <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 0C5.37 0 0 5.37..."/>
-                </svg>
-                GitHub
-            </a>
-
-            <!-- Email -->
-            <a href="mailto:soham27@somaiya.edu"
-               style="color:#8b949e;text-decoration:none;display:flex;align-items:center;gap:6px;"
-               onmouseover="this.style.color='#21e06a'"
-               onmouseout="this.style.color='#8b949e'">
-                <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M2 4h20v16H2z"/>
-                </svg>
-                Email
-            </a>
-
-        </div>
-
-        <!-- RIGHT SIDE -->
-        <div style="color:#21e06a;font-weight:700;letter-spacing:1px;">
-            🛡 SENTINELTI · © 2026 All Rights Reserved
-        </div>
-
-    </div>
-    """, unsafe_allow_html=True)
-# def render_footer():
-#     st.markdown("""<div style="position:fixed;bottom:0;left:0;right:0;z-index:9998;
-#         background:linear-gradient(90deg,#0d1117,#111827,#0d1117);
-#         border-top:1px solid #21e06a22;padding:0 24px;height:44px;
-#         display:flex;align-items:center;justify-content:space-between;">
-#       <div style="display:flex;align-items:center;gap:4px;font-size:0.62rem;">
-#         <span style="color:#484f58;letter-spacing:1px;margin-right:6px">BUILT BY</span>
-#         <a href="https://www.linkedin.com/in/shahsoham2003/" target="_blank"
-#            style="color:#8b949e;text-decoration:none;padding:3px 8px;border-radius:4px;border:1px solid transparent"
-#            onmouseover="this.style.color='#0a66c2';this.style.borderColor='#0a66c244'"
-#            onmouseout="this.style.color='#8b949e';this.style.borderColor='transparent'">
-#           LinkedIn · Soham Shah</a>
-#         <span style="color:#21262d;margin:0 2px">|</span>
-#         <a href="https://github.com/soham7998/sentinel_TI" target="_blank"
-#            style="color:#8b949e;text-decoration:none;padding:3px 8px;border-radius:4px;border:1px solid transparent"
-#            onmouseover="this.style.color='#c9d1d9';this.style.borderColor='#30363d'"
-#            onmouseout="this.style.color='#8b949e';this.style.borderColor='transparent'">
-#           GitHub · sentinel_TI</a>
-#         <span style="color:#21262d;margin:0 2px">|</span>
-#         <a href="mailto:soham27@somaiya.edu"
-#            style="color:#8b949e;text-decoration:none;padding:3px 8px;border-radius:4px;border:1px solid transparent"
-#            onmouseover="this.style.color='#21e06a';this.style.borderColor='#21e06a44'"
-#            onmouseout="this.style.color='#8b949e';this.style.borderColor='transparent'">
-#           soham27@somaiya.edu</a>
-#       </div>
-#       <div style="font-size:0.62rem;color:#484f58;text-align:right">
-#         <span style="color:#21e06a;font-weight:800;letter-spacing:2px">🛡 SENTINELTI</span>
-#         <span style="color:#21262d;margin:0 6px">·</span>© 2026 All Rights Reserved
-#       </div>
-#     </div>""", unsafe_allow_html=True)
+    st.markdown("""<div style="position:fixed;bottom:0;left:0;right:0;z-index:9998;
+        background:linear-gradient(90deg,#0d1117,#111827,#0d1117);
+        border-top:1px solid #21e06a22;padding:0 24px;height:44px;
+        display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:4px;font-size:0.62rem;">
+        <span style="color:#484f58;letter-spacing:1px;margin-right:6px">BUILT BY</span>
+        <a href="https://www.linkedin.com/in/shahsoham2003/" target="_blank"
+           style="color:#8b949e;text-decoration:none;padding:3px 8px;border-radius:4px;border:1px solid transparent"
+           onmouseover="this.style.color='#0a66c2';this.style.borderColor='#0a66c244'"
+           onmouseout="this.style.color='#8b949e';this.style.borderColor='transparent'">
+          LinkedIn · Soham Shah</a>
+        <span style="color:#21262d;margin:0 2px">|</span>
+        <a href="https://github.com/soham7998/sentinel_TI" target="_blank"
+           style="color:#8b949e;text-decoration:none;padding:3px 8px;border-radius:4px;border:1px solid transparent"
+           onmouseover="this.style.color='#c9d1d9';this.style.borderColor='#30363d'"
+           onmouseout="this.style.color='#8b949e';this.style.borderColor='transparent'">
+          GitHub · sentinel_TI</a>
+        <span style="color:#21262d;margin:0 2px">|</span>
+        <a href="mailto:soham27@somaiya.edu"
+           style="color:#8b949e;text-decoration:none;padding:3px 8px;border-radius:4px;border:1px solid transparent"
+           onmouseover="this.style.color='#21e06a';this.style.borderColor='#21e06a44'"
+           onmouseout="this.style.color='#8b949e';this.style.borderColor='transparent'">
+          soham27@somaiya.edu</a>
+      </div>
+      <div style="font-size:0.62rem;color:#484f58;text-align:right">
+        <span style="color:#21e06a;font-weight:800;letter-spacing:2px">🛡 SENTINELTI</span>
+        <span style="color:#21262d;margin:0 6px">·</span>© 2026 All Rights Reserved
+      </div>
+    </div>""", unsafe_allow_html=True)
 
 # ── Load ──
 status        = api("/status", silent=True) or {}
