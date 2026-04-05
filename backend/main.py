@@ -77,6 +77,23 @@ def _ml_progress_cb(n: int, total: int):
     ml_progress["total"]  = total
 
 
+@app.on_event("startup")
+def preload_model():
+    """Pre-train model at startup so first /ml/score call is instant."""
+    from ml_model import get_model
+    Thread(target=get_model, daemon=True).start()
+    logger.info("Model preload started in background")
+
+
+@app.post("/clear")
+def clear_db():
+    """Drop all indicators from MongoDB for a fresh fetch."""
+    count = collection.count_documents({})
+    collection.delete_many({})
+    logger.info(f"Cleared {count} indicators from DB")
+    return {"status": "cleared", "deleted": count}
+
+
 @app.post("/fetch")
 def fetch(limit: int = Query(default=50, ge=10, le=200)):
     global fetch_in_progress

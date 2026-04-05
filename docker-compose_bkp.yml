@@ -2,48 +2,43 @@ version: "3.3"
 services:
   backend:
     build: ./backend
+    container_name: sentinel-backend
     ports:
       - "8000:8000"
     depends_on:
       - mongodb
     environment:
-      MONGO_URI: ${MONGO_URI:-mongodb://mongodb:27017}
+      MONGO_URI: mongodb://mongodb:27017
       OTX_API_KEY: ${OTX_API_KEY}
       ABUSEIPDB_API_KEY: ${ABUSEIPDB_API_KEY}
       VIRUSTOTAL_API_KEY: ${VIRUSTOTAL_API_KEY}
     volumes:
       - ./geoip:/app/geoip
-<<<<<<< HEAD
       # Mount source files so code changes don't need a rebuild
       - ./backend/main.py:/app/main.py
       - ./backend/feeds.py:/app/feeds.py
       - ./backend/ml_model.py:/app/ml_model.py
-=======
-    restart: unless-stopped
->>>>>>> 732fe17 (prod: remove local volume mounts for hosting)
 
   frontend:
     build: ./frontend
+    container_name: sentinel-frontend
     ports:
       - "8501:8501"
     depends_on:
       - backend
     environment:
-<<<<<<< HEAD
       BACKEND_URL: http://backend:8000
     # Mount source so UI changes reflect with just a rerun
     volumes:
       - ./frontend/app.py:/app/app.py
-=======
-      BACKEND_URL: ${BACKEND_URL:-http://backend:8000}
-    restart: unless-stopped
->>>>>>> 732fe17 (prod: remove local volume mounts for hosting)
 
   mongodb:
     image: mongo:6.0
+    container_name: sentinel-mongodb
+    ports:
+      - "27017:27017"
     volumes:
       - mongo_data:/data/db
-    restart: unless-stopped
 
 volumes:
   mongo_data:

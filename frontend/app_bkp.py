@@ -1,119 +1,700 @@
-import os
-import streamlit as st
-import requests
+"""SentinelTI – SOC Dashboard v2 FINAL"""
+import os, time, requests, re
 import pandas as pd
+import numpy as np
+import streamlit as st
+from datetime import datetime, timezone, timedelta
 
-# -----------------------------
-# CONFIG
-# -----------------------------
 BACKEND = os.getenv("BACKEND_URL", "http://backend:8000")
 
-st.set_page_config(layout="wide", page_title="SentinelTI")
-st.title("🛡️ SentinelTI – Threat Intelligence Dashboard")
+st.set_page_config(page_title="SentinelTI || SOC", page_icon="🛡️",
+                   layout="wide", initial_sidebar_state="collapsed")
 
-# -----------------------------
-# LEFT PANEL
-# -----------------------------
-col1, col2 = st.columns([1, 4])
+# ══════════════════════════════════════════════════════════
+#  GLOBAL CSS
+# ══════════════════════════════════════════════════════════
+st.markdown("""
+<style>
+html,body,[class*="css"]{
+    font-family:'JetBrains Mono','Fira Code','Courier New',monospace!important;
+    background:#0a0e17!important;
+    color:#c9d1d9!important;
+}
+.stApp{background:#0a0e17!important;}
+.block-container{
+    padding-top:0rem!important;
+    padding-left:1rem!important;
+    padding-right:1rem!important;
+    padding-bottom:64px!important;
+}
 
-with col1:
-    if st.button("🚀 Fetch Now"):
-        with st.spinner("Fetching threat feeds..."):
-            try:
-                r = requests.post(f"{BACKEND}/fetch", timeout=60)
+/* ── Hide Streamlit chrome ── */
+#MainMenu,footer{visibility:hidden;}
+header [data-testid="stToolbar"],
+header [data-testid="stDecoration"],
+header [data-testid="stStatusWidget"],
+button[title="Main menu"]{display:none!important;}
+header{background:transparent!important;padding:0!important;margin:0!important;height:0!important;}
 
-                if r.status_code != 200:
-                    st.error("Backend error during fetch")
-                    st.code(r.text)
-                else:
-                    data = r.json()
-                    st.success(
-                        f"Inserted {data.get('inserted', 0)} indicators "
-                        f"in {data.get('time_sec', 0)} sec"
-                    )
+/* ── KILL the native arrow completely ── */
+[data-testid="collapsedControl"]{
+    display:none!important;
+    visibility:hidden!important;
+    opacity:0!important;
+    pointer-events:none!important;
+    width:0!important;
+    height:0!important;
+}
 
-            except Exception as e:
-                st.error("Fetch failed")
-                st.exception(e)
+/* ── Sidebar ── */
+section[data-testid="stSidebar"]>div{padding-top:0!important;margin-top:0!important;}
+[data-testid="stSidebar"]{background:#0d1117!important;border-right:2px solid #21e06a33!important;}
+[data-testid="stSidebar"] .stButton>button{
+    background:#161b22!important;border:1px solid #21262d!important;
+    color:#c9d1d9!important;font-size:0.75rem!important;border-radius:4px!important;
+    width:100%!important;margin-bottom:6px!important;padding:8px!important;
+}
+[data-testid="stSidebar"] .stButton>button:hover{border-color:#21e06a!important;color:#21e06a!important;}
 
-    limit = st.number_input("Display limit", 50, 500, 200)
+/* ── Command bar ── */
+.cmd-bar{
+    background:linear-gradient(90deg,#0d1117,#161b22);
+    border-bottom:1px solid #21e06a22;
+    padding:10px 20px 10px 64px;
+    display:flex;align-items:center;justify-content:space-between;
+    margin:-1rem -1rem 1rem -1rem;
+    position:sticky!important;top:0!important;z-index:900!important;
+}
+.cmd-logo{font-size:1.1rem;font-weight:800;letter-spacing:2px;color:#21e06a;}
+.cmd-sub{font-size:0.65rem;color:#58a6ff;letter-spacing:1px;}
+.cmd-time{font-size:0.8rem;color:#21e06a;font-weight:700;letter-spacing:1px;}
 
-# -----------------------------
-# RIGHT PANEL
-# -----------------------------
-with col2:
-    st.subheader("📌 Recent Indicators")
+/* ── KPI ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:10px;}
+.kpi-card{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:12px 14px;position:relative;overflow:hidden;}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.kpi-card.high::before{background:#f85149;}.kpi-card.medium::before{background:#f0883e;}
+.kpi-card.low::before{background:#3fb950;}.kpi-card.total::before{background:#58a6ff;}
+.kpi-card.enrich::before{background:#bc8cff;}.kpi-card.ml::before{background:#21e06a;}
+.kpi-val{font-size:2rem;font-weight:800;line-height:1;margin-bottom:3px;}
+.kpi-card.high .kpi-val{color:#f85149;}.kpi-card.medium .kpi-val{color:#f0883e;}
+.kpi-card.low .kpi-val{color:#3fb950;}.kpi-card.total .kpi-val{color:#58a6ff;}
+.kpi-card.enrich .kpi-val{color:#bc8cff;}.kpi-card.ml .kpi-val{color:#21e06a;}
+.kpi-lbl{font-size:0.6rem;color:#8b949e;text-transform:uppercase;letter-spacing:1px;}
+.kpi-sub{font-size:0.58rem;color:#484f58;margin-top:2px;}
 
+/* ── Misc ── */
+.sec-hdr{font-size:0.62rem;color:#8b949e;text-transform:uppercase;letter-spacing:2px;border-bottom:1px solid #21262d;padding-bottom:4px;margin:14px 0 8px 0;}
+.badge-HIGH{background:#f8514922;color:#f85149;border:1px solid #f8514966;padding:2px 8px;border-radius:3px;font-size:0.7rem;font-weight:700;}
+.badge-MEDIUM{background:#f0883e22;color:#f0883e;border:1px solid #f0883e66;padding:2px 8px;border-radius:3px;font-size:0.7rem;font-weight:700;}
+.badge-LOW{background:#3fb95022;color:#3fb950;border:1px solid #3fb95066;padding:2px 8px;border-radius:3px;font-size:0.7rem;font-weight:700;}
+.status-pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:0.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+.status-idle{background:#3fb95022;color:#3fb950;border:1px solid #3fb95044;}
+.status-running{background:#f0883e22;color:#f0883e;border:1px solid #f0883e44;}
+.status-ml{background:#58a6ff22;color:#58a6ff;border:1px solid #58a6ff44;}
+
+/* ── Tabs ── */
+.stTabs [data-baseweb="tab-list"]{background:#0d1117;border-bottom:1px solid #21262d;gap:0;}
+.stTabs [data-baseweb="tab"]{background:transparent;color:#8b949e;font-size:0.72rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:10px 20px;border-radius:0;border-bottom:2px solid transparent;}
+.stTabs [aria-selected="true"]{color:#21e06a!important;border-bottom:2px solid #21e06a!important;background:transparent!important;}
+
+/* ── Metrics ── */
+[data-testid="metric-container"]{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:10px 14px;}
+[data-testid="metric-container"] label{color:#8b949e!important;font-size:0.65rem!important;text-transform:uppercase;letter-spacing:1px;}
+[data-testid="metric-container"] [data-testid="stMetricValue"]{color:#c9d1d9!important;font-size:1.5rem!important;font-weight:800!important;}
+
+/* ── Fixed Footer ── */
+.sentinel-footer{
+    position:fixed;bottom:0;left:0;right:0;z-index:9998;
+    background:linear-gradient(90deg,#0d1117 0%,#111827 50%,#0d1117 100%);
+    border-top:1px solid #21e06a22;
+    padding:0 24px;height:48px;
+    display:flex;align-items:center;justify-content:space-between;
+}
+.footer-left{display:flex;align-items:center;gap:4px;}
+.footer-link{
+    display:inline-flex;align-items:center;gap:5px;
+    padding:4px 10px;border-radius:4px;
+    font-size:0.65rem;font-weight:600;letter-spacing:0.5px;
+    text-decoration:none!important;border:1px solid transparent;
+    transition:all 0.15s ease;color:#8b949e!important;
+}
+.footer-link:hover{background:#161b22;color:#c9d1d9!important;border-color:#21262d;}
+.footer-link.linkedin:hover{color:#0a66c2!important;border-color:#0a66c244!important;}
+.footer-link.github:hover{color:#c9d1d9!important;border-color:#30363d!important;}
+.footer-link.email:hover{color:#21e06a!important;border-color:#21e06a44!important;}
+.footer-divider{width:1px;height:16px;background:#21262d;margin:0 4px;}
+.footer-right{font-size:0.62rem;color:#484f58;letter-spacing:1px;text-align:right;line-height:1.5;}
+.footer-brand{font-size:0.72rem;font-weight:800;color:#21e06a;letter-spacing:2px;}
+
+/* ══════════════════════════════════
+   CUSTOM SIDEBAR TOGGLE BUTTON
+   Completely replaces Streamlit's
+   native collapsedControl arrow
+══════════════════════════════════ */
+#sentinel-toggle {
+    position: fixed;
+    top: 50vh;
+    left: 0;
+    transform: translateY(-50%);
+    z-index: 99999;
+
+    width: 42px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0;
+
+    background: #0d1117;
+    border: 1.5px solid #21e06a44;
+    border-left: none;
+    border-radius: 0 14px 14px 0;
+    cursor: pointer;
+    user-select: none;
+
+    transition:
+        width        0.25s cubic-bezier(.4,0,.2,1),
+        background   0.2s  ease,
+        border-color 0.2s  ease,
+        box-shadow   0.25s ease;
+}
+
+/* glow + widen on hover */
+#sentinel-toggle:hover {
+    width: 56px;
+    background: #0f1f14;
+    border-color: #21e06a;
+    box-shadow:
+        6px 0 32px #21e06a2a,
+        0   0  0 1px #21e06a18;
+}
+
+/* entrance pulse to grab attention on load */
+@keyframes sentinel-pulse {
+    0%   { box-shadow: 4px 0 0  0   #21e06a66; }
+    60%  { box-shadow: 4px 0 0  14px #21e06a00; }
+    100% { box-shadow: 4px 0 0  0   #21e06a00; }
+}
+#sentinel-toggle.pulsing {
+    animation: sentinel-pulse 1.6s ease-out 4;
+}
+
+/* ── hamburger bars ── */
+.s-hbg {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    pointer-events: none;
+}
+.s-hbg span {
+    display: block;
+    width: 18px;
+    height: 2px;
+    background: #21e06a;
+    border-radius: 2px;
+    transform-origin: center;
+    transition:
+        transform 0.28s cubic-bezier(.4,0,.2,1),
+        opacity   0.2s  ease,
+        width     0.22s ease,
+        background 0.2s ease;
+}
+
+/* hover: bars fan slightly */
+#sentinel-toggle:hover .s-hbg span:nth-child(1) { width: 20px; }
+#sentinel-toggle:hover .s-hbg span:nth-child(2) { width: 14px; }
+#sentinel-toggle:hover .s-hbg span:nth-child(3) { width: 20px; }
+
+/* open state: morph into X */
+#sentinel-toggle.open .s-hbg span:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+    width: 18px;
+}
+#sentinel-toggle.open .s-hbg span:nth-child(2) {
+    opacity: 0;
+    width: 0;
+}
+#sentinel-toggle.open .s-hbg span:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+    width: 18px;
+}
+
+/* tooltip label that slides in on hover */
+#sentinel-toggle::after {
+    content: attr(data-label);
+    position: absolute;
+    left: calc(100% + 10px);
+    font-size: 0.52rem;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 2px;
+    color: #21e06a;
+    white-space: nowrap;
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    pointer-events: none;
+}
+#sentinel-toggle:hover::after {
+    opacity: 1;
+    transform: translateX(0);
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ══════════════════════════════════════════════════════════
+#  CUSTOM TOGGLE BUTTON  (pure HTML + JS, no Streamlit widget)
+#  Programmatically clicks Streamlit's hidden native button
+# ══════════════════════════════════════════════════════════
+st.markdown("""
+<div id="sentinel-toggle"
+     class="pulsing"
+     data-label="MENU"
+     onclick="sentinelToggleSidebar()">
+  <div class="s-hbg">
+    <span></span>
+    <span></span>
+    <span></span>
+  </div>
+</div>
+
+<script>
+(function () {
+  const btn = document.getElementById('sentinel-toggle');
+  let sidebarOpen = false;
+
+  // Remove entrance pulse after it finishes
+  setTimeout(() => btn.classList.remove('pulsing'), 8000);
+
+  // Click handler
+  window.sentinelToggleSidebar = function () {
+    // Try every selector Streamlit uses across versions
+    const selectors = [
+      '[data-testid="collapsedControl"]',
+      'button[aria-label="open sidebar"]',
+      'button[aria-label="close sidebar"]',
+      'button[kind="header"]',
+      '.st-emotion-cache-1rtdyuf',   // Streamlit 1.3x
+      '[data-testid="stSidebarCollapsedControl"]'
+    ];
+    let clicked = false;
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (el) { el.click(); clicked = true; break; }
+    }
+
+    // Toggle icon regardless (in case native button was invisible)
+    sidebarOpen = !sidebarOpen;
+    btn.classList.toggle('open', sidebarOpen);
+    btn.setAttribute('data-label', sidebarOpen ? 'CLOSE' : 'MENU');
+  };
+
+  // Watch sidebar DOM width to auto-sync icon state
+  function watchSidebar() {
+    const sidebar = document.querySelector('[data-testid="stSidebar"]');
+    if (!sidebar) { setTimeout(watchSidebar, 500); return; }
+
+    const ro = new ResizeObserver(entries => {
+      for (const e of entries) {
+        const isOpen = e.contentRect.width > 60;
+        btn.classList.toggle('open', isOpen);
+        btn.setAttribute('data-label', isOpen ? 'CLOSE' : 'MENU');
+        sidebarOpen = isOpen;
+      }
+    });
+    ro.observe(sidebar);
+  }
+  setTimeout(watchSidebar, 600);
+})();
+</script>
+""", unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════
+#  HELPERS
+# ══════════════════════════════════════════════════════════
+def api(path, method="GET", silent=False, **kw):
     try:
-        r = requests.get(f"{BACKEND}/indicators?limit={limit}", timeout=30)
-
-        if r.status_code != 200:
-            st.error("Failed to load indicators")
-            st.code(r.text)
-            st.stop()
-
-        data = r.json()
-
+        fn = requests.post if method=="POST" else requests.get
+        r  = fn(f"{BACKEND}{path}", timeout=8, **kw)
+        r.raise_for_status()
+        return r.json()
     except Exception as e:
-        st.error("Unable to connect to backend")
-        st.exception(e)
-        st.stop()
+        if not silent: st.error(f"⚠ Backend: {e}")
+        return None
 
-    if not data:
-        st.info("No data available")
-        st.stop()
-
+def load_df():
+    data = api("/indicators?limit=200", silent=True)
+    if not data: return pd.DataFrame()
     df = pd.DataFrame(data)
+    if df.empty: return df
+    if "sources" in df.columns:
+        df["sources"] = df["sources"].apply(lambda x:", ".join(x) if isinstance(x,list) else str(x or ""))
+    for col in ["confidence_score","abuse_reports","ml_score","rf_prob","xgb_prob"]:
+        if col in df.columns: df[col] = pd.to_numeric(df[col], errors="coerce")
+    for col in ["country","city","isp"]:
+        if col in df.columns: df[col] = df[col].replace([None,"None","nan",""],"—").fillna("—")
+    if "ml_risk" not in df.columns: df["ml_risk"] = df.get("risk","LOW")
+    df["ml_risk"] = df["ml_risk"].fillna("LOW")
+    if "ml_score" not in df.columns: df["ml_score"] = None
+    if "enriched" not in df.columns: df["enriched"] = False
+    df["STATUS"] = df["enriched"].apply(lambda x:"ENRICHED" if x is True else "PENDING")
+    for col in ("first_seen","last_seen"):
+        if col in df.columns:
+            df[col] = pd.to_datetime(df[col], errors="coerce").dt.strftime("%Y-%m-%d %H:%M").fillna("—")
+    return df
 
-    cols = [
-        "indicator",
-        "source",
-        "confidence_score",
-        "country",
-        "state",
-        "city",
-        "malicious",
-        "first_seen",
-        "fetched_at",
+def crow(row):
+    r = row.get("ml_risk","")
+    if r=="HIGH":   return ["background-color:#f8514918;color:#f0b4b0"]*len(row)
+    if r=="MEDIUM": return ["background-color:#f0883e18;color:#f0c090"]*len(row)
+    return ["color:#8b949e"]*len(row)
+
+def now_utc():
+    utc = datetime.now(timezone.utc)
+    ist = utc + timedelta(hours=5, minutes=30)
+    return f"{utc.strftime('%H:%M:%S')} UTC  ·  {ist.strftime('%H:%M:%S')} IST"
+
+def render_footer():
+    st.markdown("""
+<div class="sentinel-footer">
+  <div class="footer-left">
+    <span style="font-size:0.6rem;color:#484f58;letter-spacing:1px;margin-right:6px">BUILT BY</span>
+    <a class="footer-link linkedin" href="https://www.linkedin.com/in/shahsoham2003/" target="_blank" rel="noopener">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
+        <rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/>
+      </svg>
+      Soham Shah
+    </a>
+    <div class="footer-divider"></div>
+    <a class="footer-link github" href="https://github.com/soham7998" target="_blank" rel="noopener">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+      </svg>
+      soham7998
+    </a>
+    <div class="footer-divider"></div>
+    <a class="footer-link email" href="mailto:soham27@somaiya.edu">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+        <polyline points="22,6 12,13 2,6"/>
+      </svg>
+      soham27@somaiya.edu
+    </a>
+  </div>
+  <div class="footer-right">
+    <span class="footer-brand">🛡 SENTINELTI</span>
+    <span style="color:#21262d;margin:0 6px">·</span>
+    <span>© 2026 All Rights Reserved</span>
+  </div>
+</div>
+""", unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════
+#  LOAD DATA
+# ══════════════════════════════════════════════════════════
+status        = api("/status", silent=True) or {}
+fetch_running = status.get("fetch_in_progress", False)
+ml_running    = status.get("ml_in_progress", False)
+df            = load_df()
+total_iocs    = status.get("total",0)
+high_c        = status.get("high",0)
+med_c         = status.get("medium",0)
+low_c         = status.get("low",0)
+enr_n         = status.get("enriched",0)
+ml_n          = status.get("ml_scored",0)
+
+# ══ SIDEBAR ══
+with st.sidebar:
+    st.markdown('<div style="font-size:1rem;font-weight:800;color:#21e06a;letter-spacing:2px;padding:4px 0">🛡 SENTINELTI</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:0.6rem;color:#58a6ff;letter-spacing:1px;margin-bottom:8px">EXPLAINABLE THREAT INTELLIGENCE</div>', unsafe_allow_html=True)
+
+    if fetch_running:
+        st.warning(f"⏳ Enriching {enr_n}/{total_iocs}…")
+        st.progress(enr_n/max(total_iocs,1))
+    elif ml_running:
+        p = api("/ml/score/progress", silent=True) or {}
+        st.info(f"🧠 Scoring {p.get('scored',0)}/{p.get('total',0)}")
+        st.progress(p.get("scored",0)/max(p.get("total",1),1))
+    else:
+        if total_iocs>0 and ml_n==total_iocs: st.success(f"✅ Ready — {total_iocs} IOCs scored")
+        elif total_iocs>0: st.success(f"✅ {total_iocs} IOCs · {enr_n} enriched")
+        else: st.info("📡 Click FETCH FEEDS to start")
+
+    st.markdown('<div class="sec-hdr">COMMAND PANEL</div>', unsafe_allow_html=True)
+    lim = st.select_slider("IOC Limit", options=[25,50,100,200], value=50,
+                           help="25≈1min | 50≈2min | 100≈5min | 200≈15min")
+
+    if st.button("⬆  FETCH FEEDS", disabled=fetch_running, use_container_width=True):
+        api(f"/fetch?limit={lim}", method="POST")
+        st.toast(f"Fetching {lim} IOCs…", icon="📡"); time.sleep(1); st.rerun()
+
+    if st.button("⚡  RUN ML SCORING", disabled=(fetch_running or ml_running), use_container_width=True):
+        api("/ml/score", method="POST")
+        st.toast("ML scoring started", icon="🧠"); time.sleep(1); st.rerun()
+
+    if st.button("🗑  CLEAR DB", disabled=fetch_running, use_container_width=True):
+        r = api("/clear", method="POST")
+        if r: st.toast(f"Cleared {r.get('deleted',0)} IOCs", icon="🗑️")
+        time.sleep(0.3); st.rerun()
+
+    st.markdown('<div class="sec-hdr">FEED STATUS</div>', unsafe_allow_html=True)
+    for name,role,color in [("Abuse.ch","PRIMARY","#21e06a"),("CINS Army","ACTIVE","#21e06a"),
+                              ("OTX","ACTIVE","#21e06a"),("AbuseIPDB","ENRICHMENT","#58a6ff"),
+                              ("VirusTotal","ENRICHMENT","#58a6ff"),("GeoIP","ENRICHMENT","#58a6ff")]:
+        st.markdown(f'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #21262d22"><span style="font-size:0.72rem;color:#c9d1d9">{name}</span><span style="font-size:0.6rem;color:{color};letter-spacing:1px">{role}</span></div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="sec-hdr">IOC COUNTS</div>', unsafe_allow_html=True)
+    for label,val,color in [("Total IOCs",total_iocs,"#58a6ff"),("HIGH",high_c,"#f85149"),
+                              ("MEDIUM",med_c,"#f0883e"),("LOW",low_c,"#3fb950"),
+                              ("Enriched",enr_n,"#bc8cff"),("ML Scored",ml_n,"#21e06a")]:
+        st.markdown(f'<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #21262d22"><span style="font-size:0.72rem;color:{color}">{label}</span><span style="font-size:0.9rem;font-weight:800;color:{color}">{val}</span></div>', unsafe_allow_html=True)
+
+    st.markdown('<div class="sec-hdr">SETTINGS</div>', unsafe_allow_html=True)
+    auto_refresh = st.checkbox("🔄  AUTO-REFRESH 30s", value=False)
+    st.markdown('<div style="font-size:0.6rem;color:#484f58;text-align:center;margin-top:20px;line-height:1.8">SentinelTI v2.0<br>Soham Shah</div>', unsafe_allow_html=True)
+
+# ══ COMMAND BAR ══
+if fetch_running: spill='<span class="status-pill status-running">● ENRICHING</span>'
+elif ml_running:  spill='<span class="status-pill status-ml">● ML SCORING</span>'
+else:             spill='<span class="status-pill status-idle">● OPERATIONAL</span>'
+
+clock_slot = st.empty()
+clock_slot.markdown(f"""<div class="cmd-bar">
+  <div><div class="cmd-logo">🛡 &nbsp;SENTINELTI</div><div class="cmd-sub">EXPLAINABLE THREAT INTELLIGENCE PLATFORM</div></div>
+  <div style="display:flex;align-items:center;gap:20px">{spill}<div class="cmd-time">🕐 &nbsp;{now_utc()}</div></div>
+</div>""", unsafe_allow_html=True)
+
+# ══ KPI CARDS ══
+st.markdown(f"""<div class="kpi-grid">
+  <div class="kpi-card total"><div class="kpi-val">{total_iocs}</div><div class="kpi-lbl">Total IOCs</div><div class="kpi-sub">Active indicators</div></div>
+  <div class="kpi-card high"><div class="kpi-val">{high_c}</div><div class="kpi-lbl">HIGH Risk</div><div class="kpi-sub">Immediate action</div></div>
+  <div class="kpi-card medium"><div class="kpi-val">{med_c}</div><div class="kpi-lbl">MEDIUM Risk</div><div class="kpi-sub">Review required</div></div>
+  <div class="kpi-card low"><div class="kpi-val">{low_c}</div><div class="kpi-lbl">LOW Risk</div><div class="kpi-sub">Monitor</div></div>
+  <div class="kpi-card enrich"><div class="kpi-val">{enr_n}</div><div class="kpi-lbl">Enriched</div><div class="kpi-sub">{f'{enr_n/max(total_iocs,1)*100:.0f}% coverage' if total_iocs else '—'}</div></div>
+  <div class="kpi-card ml"><div class="kpi-val">{ml_n}</div><div class="kpi-lbl">ML Scored</div><div class="kpi-sub">RF+XGBoost</div></div>
+</div>""", unsafe_allow_html=True)
+
+if fetch_running:
+    st.progress(enr_n/max(total_iocs,1), text=f"⏳ Enriching {enr_n}/{total_iocs} — AbuseIPDB · VirusTotal · GeoIP")
+if ml_running:
+    p = api("/ml/score/progress", silent=True) or {}
+    st.progress(p.get("scored",0)/max(p.get("total",1),1), text=f"🧠 ML Scoring {p.get('scored',0)}/{p.get('total',0)}")
+
+# ══ TABS ══
+tab1,tab2,tab3,tab4,tab5,tab6 = st.tabs(["OFFENSE QUEUE","ML RISK ENGINE","SHAP · GLOBAL","SHAP · LOCAL","ANALYTICS","THREAT INTEL · LIVE"])
+
+with tab1:
+    st.markdown('<div class="sec-hdr">ACTIVE OFFENSE QUEUE — INDICATORS OF COMPROMISE</div>', unsafe_allow_html=True)
+    if df.empty and not fetch_running:
+        st.markdown('<div style="text-align:center;padding:60px;color:#484f58;border:1px dashed #21262d;border-radius:6px;margin-top:20px"><div style="font-size:2.5rem">📡</div><div style="font-size:0.9rem;margin-top:12px;letter-spacing:1px">NO ACTIVE THREATS</div><div style="font-size:0.7rem;margin-top:6px">Click the ☰ button on the left edge → FETCH FEEDS</div></div>', unsafe_allow_html=True)
+    elif df.empty and fetch_running:
+        st.info("⏳ Fetching IOCs… table will populate shortly"); time.sleep(3); st.rerun()
+    else:
+        fc1,fc2,fc3,fc4 = st.columns([2,1.5,1.5,2])
+        with fc1: search  = st.text_input("SEARCH", placeholder="IP or source…", label_visibility="collapsed")
+        with fc2: risk_f  = st.multiselect("RISK", ["HIGH","MEDIUM","LOW"], default=["HIGH","MEDIUM","LOW"], label_visibility="collapsed")
+        with fc3: enr_f   = st.selectbox("STATUS", ["All","ENRICHED","PENDING"], label_visibility="collapsed")
+        with fc4: sort_by = st.selectbox("SORT", ["ml_score ↓","abuse_reports ↓","confidence_score ↓","last_seen ↓"], label_visibility="collapsed")
+        fdf = df.copy()
+        if risk_f and "ml_risk" in fdf.columns: fdf = fdf[fdf["ml_risk"].isin(risk_f)]
+        if enr_f=="ENRICHED":  fdf = fdf[fdf["enriched"]==True]
+        elif enr_f=="PENDING": fdf = fdf[fdf["enriched"]!=True]
+        if search and "indicator" in fdf.columns:
+            mask = fdf["indicator"].str.contains(search, na=False)
+            if "sources" in fdf.columns: mask |= fdf["sources"].str.contains(search, na=False, case=False)
+            fdf = fdf[mask]
+        sc = sort_by.split(" ")[0]
+        if sc in fdf.columns: fdf = fdf.sort_values(sc, ascending=False, na_position="last")
+        show = [c for c in ["indicator","ml_risk","ml_score","sources","confidence_score","abuse_reports","country","city","isp","STATUS","first_seen","last_seen"] if c in fdf.columns]
+        ren  = {"indicator":"IP ADDRESS","ml_risk":"SEVERITY","ml_score":"RISK SCORE","sources":"FEED SOURCE","confidence_score":"CONFIDENCE %","abuse_reports":"ABUSE REPORTS","country":"COUNTRY","city":"CITY","isp":"ISP / ASN","STATUS":"STATUS","first_seen":"FIRST SEEN","last_seen":"LAST SEEN"}
+        st.dataframe(fdf[show].rename(columns=ren).style.apply(crow,axis=1), use_container_width=True, height=500, hide_index=True)
+        c1,c2,c3 = st.columns(3)
+        c1.caption(f"Showing **{len(fdf)}** of **{len(df)}** indicators")
+        if fetch_running: c2.caption(f"⏳ Enriching {enr_n}/{total_iocs}…")
+        c3.caption(f"🕐 {now_utc()}")
+        if fetch_running: time.sleep(5); st.rerun()
+
+with tab2:
+    st.markdown('<div class="sec-hdr">ML RISK ENGINE — RF+XGBOOST STACKING ENSEMBLE</div>', unsafe_allow_html=True)
+    if df.empty or "ml_score" not in df.columns or df["ml_score"].isna().all():
+        st.info("Run ML SCORING from the sidebar after fetching IOCs.")
+    else:
+        sdf = df[df["ml_score"].notna()].copy()
+        m1,m2,m3,m4,m5 = st.columns(5)
+        m1.metric("SCORED",len(sdf)); m2.metric("HIGH",int((sdf["ml_risk"]=="HIGH").sum()))
+        m3.metric("MEDIUM",int((sdf["ml_risk"]=="MEDIUM").sum())); m4.metric("LOW",int((sdf["ml_risk"]=="LOW").sum()))
+        m5.metric("AVG SCORE",f"{pd.to_numeric(sdf['ml_score'],errors='coerce').mean():.3f}")
+        st.markdown('<div class="sec-hdr">SCORE DISTRIBUTION</div>', unsafe_allow_html=True)
+        ca,cb = st.columns(2)
+        with ca:
+            scores = pd.to_numeric(sdf["ml_score"],errors="coerce").dropna()
+            cnts,edges = np.histogram(scores,bins=20,range=(0,1))
+            st.bar_chart(pd.DataFrame({"Score":[f"{edges[i]:.2f}" for i in range(len(edges)-1)],"Count":cnts}).set_index("Score"),height=220,color="#58a6ff")
+        with cb:
+            rc = sdf["ml_risk"].value_counts()
+            st.bar_chart(pd.DataFrame({"Level":rc.index,"Count":rc.values}).set_index("Level"),height=220)
+        st.markdown('<div class="sec-hdr">HIGH SEVERITY OFFENSES</div>', unsafe_allow_html=True)
+        hdf = sdf[sdf["ml_risk"]=="HIGH"].sort_values("ml_score",ascending=False).head(25)
+        sh  = [c for c in ["indicator","ml_score","rf_prob","xgb_prob","sources","confidence_score","abuse_reports","country","isp"] if c in hdf.columns]
+        rn  = {"indicator":"IP","ml_score":"SCORE","rf_prob":"RF","xgb_prob":"XGB","sources":"FEEDS","confidence_score":"CONF%","abuse_reports":"REPORTS","country":"COUNTRY","isp":"ISP"}
+        st.dataframe(hdf[sh].rename(columns=rn).style.apply(crow,axis=1),use_container_width=True,height=300,hide_index=True)
+        st.markdown("""<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0">
+          <div style="background:#0d1117;border:1px solid #21262d;border-top:2px solid #58a6ff;border-radius:6px;padding:10px 14px"><div style="font-size:0.6rem;color:#8b949e">BASE LEARNER 1</div><div style="font-size:0.95rem;font-weight:700;color:#58a6ff;margin:4px 0">Random Forest</div><div style="font-size:0.65rem;color:#3fb950">150 estimators · max_depth=8</div></div>
+          <div style="background:#0d1117;border:1px solid #21262d;border-top:2px solid #f0883e;border-radius:6px;padding:10px 14px"><div style="font-size:0.6rem;color:#8b949e">BASE LEARNER 2</div><div style="font-size:0.95rem;font-weight:700;color:#f0883e;margin:4px 0">XGBoost</div><div style="font-size:0.65rem;color:#3fb950">150 rounds · lr=0.05 · depth=6</div></div>
+          <div style="background:#0d1117;border:1px solid #21262d;border-top:2px solid #21e06a;border-radius:6px;padding:10px 14px"><div style="font-size:0.6rem;color:#8b949e">META LEARNER</div><div style="font-size:0.95rem;font-weight:700;color:#21e06a;margin:4px 0">Logistic Reg</div><div style="font-size:0.65rem;color:#3fb950">Linear · Interpretable</div></div>
+          <div style="background:#0d1117;border:1px solid #21262d;border-top:2px solid #bc8cff;border-radius:6px;padding:10px 14px"><div style="font-size:0.6rem;color:#8b949e">VALIDATION</div><div style="font-size:0.95rem;font-weight:700;color:#bc8cff;margin:4px 0">5-Fold CV</div><div style="font-size:0.65rem;color:#3fb950">Stratified · stack_method=proba</div></div>
+        </div>""", unsafe_allow_html=True)
+
+with tab3:
+    st.markdown('<div class="sec-hdr">SHAP GLOBAL — FEATURE IMPORTANCE ACROSS ALL IOCs</div>', unsafe_allow_html=True)
+    st.caption("Mean |SHAP value| — which features drive malicious IP predictions globally")
+    if st.button("⚡ COMPUTE GLOBAL SHAP", type="primary"):
+        with st.spinner("Computing SHAP…"):
+            result = api("/ml/shap/global")
+        if result and "global_shap" in result:
+            shap_df = pd.DataFrame(result["global_shap"]).sort_values("importance",ascending=False)
+            max_imp = shap_df["importance"].max()
+            st.markdown('<div class="sec-hdr">FEATURE RANKING</div>', unsafe_allow_html=True)
+            for _,row in shap_df.iterrows():
+                pw = int(row["importance"]/max(max_imp,0.001)*100)
+                st.markdown(f'<div style="display:grid;grid-template-columns:160px 1fr 80px 60px;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid #21262d18"><div style="font-size:0.72rem;color:#c9d1d9;font-family:monospace">{row["feature"]}</div><div style="background:#21262d;border-radius:2px;height:14px"><div style="width:{pw}%;background:linear-gradient(90deg,#58a6ff66,#58a6ff);height:14px;border-radius:2px"></div></div><div style="font-size:0.7rem;color:#58a6ff;text-align:right">{row["importance"]:.5f}</div><div style="font-size:0.7rem;color:#8b949e;text-align:right">{row["pct"]:.1f}%</div></div>', unsafe_allow_html=True)
+        elif result and "error" in result: st.error(f"SHAP error: {result['error']}")
+    else:
+        st.markdown('<div style="text-align:center;padding:40px;color:#484f58;border:1px dashed #21262d;border-radius:6px"><div style="font-size:1.5rem">🔍</div><div style="font-size:0.8rem;margin-top:8px">Click COMPUTE GLOBAL SHAP</div></div>', unsafe_allow_html=True)
+
+with tab4:
+    st.markdown('<div class="sec-hdr">SHAP LOCAL — PER-IP THREAT EXPLANATION</div>', unsafe_allow_html=True)
+    if df.empty:
+        st.info("No indicators loaded.")
+    else:
+        high_ips = df[df["ml_risk"]=="HIGH"]["indicator"].dropna().tolist()
+        med_ips  = df[df["ml_risk"]=="MEDIUM"]["indicator"].dropna().tolist()
+        other_ips= df[~df["ml_risk"].isin(["HIGH","MEDIUM"])]["indicator"].dropna().tolist()
+        all_ips  = high_ips+med_ips+other_ips
+        ic,bc = st.columns([3,1])
+        with ic:
+            sel = st.selectbox("IP", all_ips, format_func=lambda ip:f"{'🔴' if ip in high_ips else '🟡' if ip in med_ips else '🟢'} {ip}", label_visibility="collapsed")
+        with bc:
+            go = st.button("⚡ EXPLAIN", type="primary", use_container_width=True)
+        if go:
+            with st.spinner(f"Computing SHAP for {sel}…"):
+                result = api(f"/ml/shap/local/{sel}")
+            if result and "local_shap" in result:
+                rs=result.get("risk_score",0); bv=result.get("base_value",0)
+                rl="HIGH" if rs>=0.7 else "MEDIUM" if rs>=0.3 else "LOW"
+                sc="#f85149" if rl=="HIGH" else "#f0883e" if rl=="MEDIUM" else "#3fb950"
+                st.markdown(f'<div style="background:#0d1117;border:1px solid {sc}44;border-left:3px solid {sc};border-radius:6px;padding:16px 20px;margin:10px 0"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:1.1rem;font-weight:800;color:#c9d1d9;font-family:monospace">{sel}</div><div style="font-size:0.65rem;color:#8b949e;margin-top:4px">BASELINE: {bv:.4f} · DELTA: +{rs-bv:.4f}</div></div><div style="text-align:right"><div style="font-size:2rem;font-weight:900;color:{sc}">{rs:.4f}</div><span class="badge-{rl}">{rl} SEVERITY</span></div></div></div>', unsafe_allow_html=True)
+                sldf=pd.DataFrame(result["local_shap"]); max_ab=sldf["shap_value"].abs().max()
+                st.markdown('<div class="sec-hdr">FEATURE CONTRIBUTION WATERFALL</div>', unsafe_allow_html=True)
+                for _,row in sldf.iterrows():
+                    sv=row["shap_value"]; pw=int(abs(sv)/max(max_ab,0.001)*100)
+                    bc2="#f85149" if sv>0 else "#3fb950"; arr="▲" if sv>0 else "▼"; lbl="INCREASES RISK" if sv>0 else "DECREASES RISK"
+                    st.markdown(f'<div style="display:grid;grid-template-columns:140px 60px 1fr 90px 110px;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #21262d18"><div style="font-size:0.7rem;color:#c9d1d9;font-family:monospace">{row["feature"]}</div><div style="font-size:0.68rem;color:#8b949e;text-align:right">{row["value"]:.3f}</div><div style="background:#21262d18;border-radius:2px;height:12px"><div style="width:{pw}%;background:{bc2}88;height:12px;border-radius:2px"></div></div><div style="font-size:0.7rem;color:{bc2};text-align:right;font-weight:700">{arr} {abs(sv):.5f}</div><div style="font-size:0.6rem;color:{bc2};letter-spacing:0.5px">{lbl}</div></div>', unsafe_allow_html=True)
+                ipr=df[df["indicator"]==sel]
+                if not ipr.empty:
+                    with st.expander("📋 FULL IOC RECORD"):
+                        rec=ipr.iloc[0].dropna().to_dict(); c1,c2,c3=st.columns(3); flds=list(rec.items()); t=len(flds)//3
+                        for k,v in flds[:t]: c1.markdown(f'<div style="font-size:0.7rem"><span style="color:#8b949e">{k}:</span> {v}</div>', unsafe_allow_html=True)
+                        for k,v in flds[t:t*2]: c2.markdown(f'<div style="font-size:0.7rem"><span style="color:#8b949e">{k}:</span> {v}</div>', unsafe_allow_html=True)
+                        for k,v in flds[t*2:]: c3.markdown(f'<div style="font-size:0.7rem"><span style="color:#8b949e">{k}:</span> {v}</div>', unsafe_allow_html=True)
+            elif result and "error" in result: st.error(f"SHAP: {result['error']}")
+        else:
+            st.markdown('<div style="text-align:center;padding:40px;color:#484f58;border:1px dashed #21262d;border-radius:6px"><div style="font-size:1.5rem">🔎</div><div style="font-size:0.8rem;margin-top:8px">Select IP → EXPLAIN · HIGH risk IPs listed first</div></div>', unsafe_allow_html=True)
+
+with tab5:
+    st.markdown('<div class="sec-hdr">THREAT ANALYTICS & INTELLIGENCE COVERAGE</div>', unsafe_allow_html=True)
+    if df.empty:
+        st.info("No data yet.")
+    else:
+        r1,r2 = st.columns(2)
+        with r1:
+            st.markdown('<div class="sec-hdr">TOP COUNTRIES</div>', unsafe_allow_html=True)
+            if "country" in df.columns and df["country"].ne("—").any():
+                cdf=df[df["country"]!="—"]["country"].value_counts().head(12).reset_index(); cdf.columns=["Country","Count"]
+                st.bar_chart(cdf.set_index("Country"),height=260,color="#f85149")
+        with r2:
+            st.markdown('<div class="sec-hdr">FEED BREAKDOWN</div>', unsafe_allow_html=True)
+            if "sources" in df.columns:
+                sdf2=df["sources"].str.split(", ").explode().str.strip().replace("",pd.NA).dropna().value_counts().reset_index(); sdf2.columns=["Source","Count"]
+                st.bar_chart(sdf2.set_index("Source"),height=260,color="#58a6ff")
+        r2a,r2b = st.columns(2)
+        with r2a:
+            st.markdown('<div class="sec-hdr">ISP ATTRIBUTION</div>', unsafe_allow_html=True)
+            if "isp" in df.columns and df["isp"].ne("—").any():
+                idf=df[df["isp"]!="—"]["isp"].value_counts().head(10).reset_index(); idf.columns=["ISP","Count"]
+                st.dataframe(idf,use_container_width=True,hide_index=True,height=240)
+        with r2b:
+            st.markdown('<div class="sec-hdr">INGESTION TIMELINE</div>', unsafe_allow_html=True)
+            if "last_seen" in df.columns:
+                tdf=df[df["last_seen"]!="—"].copy(); tdf["t"]=pd.to_datetime(tdf["last_seen"],errors="coerce").dt.floor("10min")
+                tdf=tdf.dropna(subset=["t"]).groupby("t").size().reset_index(name="IOCs")
+                if not tdf.empty: st.line_chart(tdf.set_index("t")["IOCs"],height=240,color="#21e06a")
+        st.markdown('<div class="sec-hdr">COVERAGE METRICS</div>', unsafe_allow_html=True)
+        cv1,cv2,cv3,cv4,cv5 = st.columns(5)
+        tot2=len(df); enrc=int(df["enriched"].eq(True).sum()) if "enriched" in df.columns else 0
+        mlc=int(df.get("ml_scored",pd.Series(dtype=bool)).eq(True).sum()) if "ml_scored" in df.columns else 0
+        avgc=pd.to_numeric(df.get("confidence_score"),errors="coerce").mean() if "confidence_score" in df.columns else 0
+        avgs=pd.to_numeric(df.get("ml_score"),errors="coerce").mean() if "ml_score" in df.columns else 0
+        cv1.metric("TOTAL IOCs",tot2); cv2.metric("ENRICHED",enrc,delta=f"{enrc/max(tot2,1)*100:.0f}%")
+        cv3.metric("ML SCORED",mlc,delta=f"{mlc/max(tot2,1)*100:.0f}%")
+        cv4.metric("AVG CONFIDENCE",f"{avgc:.1f}%" if avgc else "—")
+        cv5.metric("AVG ML SCORE",f"{avgs:.3f}" if avgs else "—")
+
+with tab6:
+    st.markdown('<div class="sec-hdr">GLOBAL THREAT INTELLIGENCE — LAST 48 HOURS</div>', unsafe_allow_html=True)
+    st.caption("Live cybersecurity news, CVEs, ransomware campaigns, nation-state activity")
+    import xml.etree.ElementTree as ET
+    from email.utils import parsedate_to_datetime
+    news_sources = [
+        ("https://feeds.feedburner.com/TheHackersNews","The Hacker News","#f85149"),
+        ("https://www.bleepingcomputer.com/feed/","BleepingComputer","#f0883e"),
+        ("https://isc.sans.edu/rssfeed_full.xml","SANS ISC","#58a6ff"),
+        ("https://www.darkreading.com/rss.xml","Dark Reading","#bc8cff"),
+        ("https://cybersecuritynews.com/feed/","CyberSecurity News","#21e06a"),
+        ("https://securityaffairs.com/feed","Security Affairs","#8b949e"),
     ]
-    df = df[[c for c in cols if c in df.columns]]
+    all_articles=[]; cutoff=datetime.now(timezone.utc)-timedelta(hours=48)
+    for feed_url,feed_name,feed_color in news_sources:
+        try:
+            r=requests.get(feed_url,timeout=8,headers={"User-Agent":"SentinelTI/2.0"})
+            root=ET.fromstring(r.content)
+            for item in root.findall(".//item")[:12]:
+                title=item.findtext("title","").strip(); link=item.findtext("link","").strip()
+                desc=re.sub(r"<[^>]+>","",item.findtext("description",""))[:220].strip()
+                try:
+                    pub_dt=parsedate_to_datetime(item.findtext("pubDate",""))
+                    if pub_dt.tzinfo is None: pub_dt=pub_dt.replace(tzinfo=timezone.utc)
+                except: pub_dt=datetime.now(timezone.utc)
+                if pub_dt>=cutoff: all_articles.append({"source":feed_name,"color":feed_color,"title":title,"link":link,"time":pub_dt,"summary":desc})
+        except Exception as e: st.caption(f"⚠ {feed_name}: {e}")
+    all_articles.sort(key=lambda x:x["time"],reverse=True)
+    if not all_articles:
+        st.info("No recent articles. Feeds may be temporarily unavailable.")
+    else:
+        src_avail=list(set(a["source"] for a in all_articles))
+        sel_src=st.multiselect("FILTER",src_avail,default=src_avail,label_visibility="collapsed")
+        filtered=[a for a in all_articles if a["source"] in sel_src]
+        st.caption(f"📰 {len(filtered)} articles from the last 48h")
+        for art in filtered:
+            ist_t=art["time"]+timedelta(hours=5,minutes=30)
+            age_sec=(datetime.now(timezone.utc)-art["time"]).total_seconds()
+            age_str=f"{age_sec/3600:.0f}h ago" if age_sec>=3600 else f"{age_sec/60:.0f}m ago"
+            c=art["color"]
+            st.markdown(f'''<div style="background:#0d1117;border:1px solid #21262d;border-left:3px solid {c};border-radius:6px;padding:12px 16px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div style="flex:1"><a href="{art['link']}" target="_blank" style="font-size:0.85rem;font-weight:700;color:#c9d1d9;text-decoration:none;line-height:1.3;display:block;margin-bottom:5px">{art['title']}</a><div style="font-size:0.72rem;color:#8b949e;line-height:1.4">{art['summary']}…</div></div><div style="text-align:right;min-width:150px;flex-shrink:0"><div style="font-size:0.65rem;color:{c};font-weight:700;letter-spacing:1px">{art['source']}</div><div style="font-size:0.62rem;color:#484f58;margin-top:4px">{art['time'].strftime('%H:%M')} UTC · {ist_t.strftime('%H:%M')} IST</div><div style="font-size:0.62rem;color:#484f58">{age_str}</div></div></div></div>''', unsafe_allow_html=True)
 
-    # -----------------------------
-    # ROW COLORING
-    # -----------------------------
-    def color_row(row):
-        if row.get("malicious", False):
-            return ["background-color: #d62828; color: white"] * len(row)
-        return [""] * len(row)
+# ══ FOOTER ══
+render_footer()
 
-    st.dataframe(
-        df.style.apply(color_row, axis=1),
-        use_container_width=True,
-    )
+# ══ LIVE CLOCK — always ticks every second, rerun every 30s ══
+for _ in range(30):
+    clock_slot.markdown(f"""<div class="cmd-bar">
+  <div><div class="cmd-logo">🛡 &nbsp;SENTINELTI</div><div class="cmd-sub">EXPLAINABLE THREAT INTELLIGENCE PLATFORM</div></div>
+  <div style="display:flex;align-items:center;gap:20px">{spill}<div class="cmd-time">🕐 &nbsp;{now_utc()}</div></div>
+</div>""", unsafe_allow_html=True)
+    time.sleep(1)
 
-    # -----------------------------
-    # SUMMARY
-    # -----------------------------
-    st.markdown("### 🚨 Threat Summary")
-    c1, c2, c3 = st.columns(3)
-
-    c1.metric("Total", len(df))
-    c2.metric("Malicious", int(df["malicious"].sum()) if "malicious" in df else 0)
-    c3.metric(
-        "Clean",
-        int((~df["malicious"]).sum()) if "malicious" in df else 0,
-    )
-
-    # -----------------------------
-    # COUNTRIES
-    # -----------------------------
-    if "country" in df.columns:
-        st.markdown("### 🌍 Top Countries")
-        st.table(
-            df["country"]
-            .value_counts()
-            .head(10)
-            .reset_index()
-            .rename(columns={"index": "Country", "country": "Count"})
-        )
-
+st.rerun()

@@ -1,576 +1,487 @@
-"""
-SentinelTI – SOC Dashboard (Streamlit)
-Tabs:
-  1. 📡 Live Feed        – real-time IOC table with risk colouring
-  2. 🧠 ML Risk Scoring  – risk distribution, score histogram
-  3. 🔍 SHAP Global      – global feature importance bar chart
-  4. 🔎 SHAP Local       – per-IP waterfall explanation
-  5. 📊 Analytics        – top countries, top sources, enrichment coverage
-"""
-
-import os
-import time
-import requests
+"""SentinelTI – SOC Dashboard v2 FINAL MERGED"""
+import os, time, requests, re
 import pandas as pd
+import numpy as np
 import streamlit as st
+from datetime import datetime, timezone, timedelta
 
 BACKEND = os.getenv("BACKEND_URL", "http://backend:8000")
 
-# ── Page Config ────────────────────────────────────────────────────────────────
-st.set_page_config(
-    page_title="SentinelTI",
-    page_icon="🛡️",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
+st.set_page_config(page_title="SentinelTI | SOC", page_icon="🛡️",
+                   layout="wide", initial_sidebar_state="expanded")
 
-# ── Custom CSS ─────────────────────────────────────────────────────────────────
-st.markdown("""
-<style>
-  .risk-high   { background:#c62828; color:#fff; padding:4px 10px; border-radius:6px; font-weight:700; }
-  .risk-medium { background:#f57c00; color:#fff; padding:4px 10px; border-radius:6px; font-weight:700; }
-  .risk-low    { background:#2e7d32; color:#fff; padding:4px 10px; border-radius:6px; font-weight:700; }
-  .metric-card { background:#1e1e2e; border-radius:10px; padding:16px; text-align:center; }
-  .metric-val  { font-size:2.2rem; font-weight:800; }
-  .metric-lbl  { font-size:0.85rem; color:#aaa; margin-top:4px; }
-  .stDataFrame { font-size:0.82rem; }
-</style>
-""", unsafe_allow_html=True)
+st.markdown("""<style>
+html,body,[class*="css"]{font-family:'JetBrains Mono','Fira Code','Courier New',monospace!important;background:#0a0e17!important;color:#c9d1d9!important;}
+.stApp{background:#0a0e17!important;}
+#MainMenu,footer{visibility:hidden;} header{visibility:visible!important;background:transparent!important;height:auto!important;} header [data-testid="stToolbar"]{display:none!important;}
+.block-container{padding:0 1rem 3.5rem 1rem!important;max-width:100%!important;}
+[data-testid="stSidebar"]{background:#0d1117!important;border-right:2px solid #21e06a33!important;}
+[data-testid="stSidebar"] .stButton>button{background:#161b22!important;border:1px solid #30363d!important;color:#c9d1d9!important;font-size:0.75rem!important;border-radius:4px!important;width:100%!important;margin-bottom:6px!important;padding:8px!important;text-align:left!important;}
+[data-testid="stSidebar"] .stButton>button:hover{border-color:#21e06a!important;color:#21e06a!important;}
+[data-testid="collapsedControl"]{display:flex!important;visibility:visible!important;background:#0d1117!important;border:2px solid #21e06a!important;border-left:none!important;border-radius:0 8px 8px 0!important;width:28px!important;align-items:center!important;justify-content:center!important;}
+[data-testid="collapsedControl"]:hover{background:#21e06a22!important;}
+[data-testid="collapsedControl"] svg{fill:#21e06a!important;color:#21e06a!important;}
+.cmd-bar{background:linear-gradient(90deg,#0d1117,#161b22);border-bottom:1px solid #21e06a22;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;margin:-1rem -1rem 1rem -1rem;}
+.cmd-logo{font-size:1.1rem;font-weight:800;letter-spacing:2px;color:#21e06a;}
+.cmd-sub{font-size:0.65rem;color:#58a6ff;letter-spacing:1px;}
+.cmd-time{font-size:0.8rem;color:#21e06a;font-weight:700;letter-spacing:1px;font-family:monospace;}
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:10px;}
+.kpi-card{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:12px 14px;position:relative;overflow:hidden;}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+.kpi-card.high::before{background:#f85149;}.kpi-card.medium::before{background:#f0883e;}
+.kpi-card.low::before{background:#3fb950;}.kpi-card.total::before{background:#58a6ff;}
+.kpi-card.enrich::before{background:#bc8cff;}.kpi-card.ml::before{background:#21e06a;}
+.kpi-val{font-size:2rem;font-weight:800;line-height:1;margin-bottom:3px;}
+.kpi-card.high .kpi-val{color:#f85149;}.kpi-card.medium .kpi-val{color:#f0883e;}
+.kpi-card.low .kpi-val{color:#3fb950;}.kpi-card.total .kpi-val{color:#58a6ff;}
+.kpi-card.enrich .kpi-val{color:#bc8cff;}.kpi-card.ml .kpi-val{color:#21e06a;}
+.kpi-lbl{font-size:0.6rem;color:#8b949e;text-transform:uppercase;letter-spacing:1px;}
+.kpi-sub{font-size:0.58rem;color:#484f58;margin-top:2px;}
+.sec-hdr{font-size:0.62rem;color:#8b949e;text-transform:uppercase;letter-spacing:2px;border-bottom:1px solid #21262d;padding-bottom:4px;margin:14px 0 8px 0;}
+.model-card{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:12px 14px;margin-bottom:0;}
+.badge-HIGH{background:#f8514922;color:#f85149;border:1px solid #f8514966;padding:2px 8px;border-radius:3px;font-size:0.7rem;font-weight:700;}
+.badge-MEDIUM{background:#f0883e22;color:#f0883e;border:1px solid #f0883e66;padding:2px 8px;border-radius:3px;font-size:0.7rem;font-weight:700;}
+.badge-LOW{background:#3fb95022;color:#3fb950;border:1px solid #3fb95066;padding:2px 8px;border-radius:3px;font-size:0.7rem;font-weight:700;}
+.status-pill{display:inline-block;padding:3px 10px;border-radius:20px;font-size:0.65rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+.status-idle{background:#3fb95022;color:#3fb950;border:1px solid #3fb95044;}
+.status-running{background:#f0883e22;color:#f0883e;border:1px solid #f0883e44;}
+.status-ml{background:#58a6ff22;color:#58a6ff;border:1px solid #58a6ff44;}
+.stTabs [data-baseweb="tab-list"]{background:#0d1117;border-bottom:1px solid #21262d;gap:0;}
+.stTabs [data-baseweb="tab"]{background:transparent;color:#8b949e;font-size:0.72rem;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:10px 20px;border-radius:0;border-bottom:2px solid transparent;}
+.stTabs [aria-selected="true"]{color:#21e06a!important;border-bottom:2px solid #21e06a!important;background:transparent!important;}
+[data-testid="metric-container"]{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:10px 14px;}
+[data-testid="metric-container"] label{color:#8b949e!important;font-size:0.65rem!important;text-transform:uppercase;letter-spacing:1px;}
+[data-testid="metric-container"] [data-testid="stMetricValue"]{color:#c9d1d9!important;font-size:1.5rem!important;font-weight:800!important;}
+</style>""", unsafe_allow_html=True)
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
-
-def api(path: str, method="GET", **kwargs):
+# ── Helpers ──
+def api(path, method="GET", silent=False, **kw):
     try:
-        fn  = requests.post if method == "POST" else requests.get
-        r   = fn(f"{BACKEND}{path}", timeout=8, **kwargs)
+        fn = requests.post if method=="POST" else requests.get
+        r  = fn(f"{BACKEND}{path}", timeout=8, **kw)
         r.raise_for_status()
         return r.json()
     except Exception as e:
-        st.error(f"Backend error: {e}")
+        if not silent: st.error(f"⚠ Backend: {e}")
         return None
 
-
-def risk_badge(risk: str) -> str:
-    cls = {"HIGH": "risk-high", "MEDIUM": "risk-medium", "LOW": "risk-low"}.get(risk, "risk-low")
-    return f'<span class="{cls}">{risk}</span>'
-
-
-def color_row(row):
-    colors = {
-        "HIGH":   "background-color:#5c1a1a; color:#fff",
-        "MEDIUM": "background-color:#4a3000; color:#fff",
-        "LOW":    "",
-    }
-    c = colors.get(row.get("ml_risk") or row.get("risk", ""), "")
-    return [c] * len(row)
-
-
-def load_indicators() -> pd.DataFrame:
-    data = api("/indicators?limit=200")
-    if not data:
-        return pd.DataFrame()
+def load_df():
+    data = api("/indicators?limit=200", silent=True)
+    if not data: return pd.DataFrame()
     df = pd.DataFrame(data)
-    if df.empty:
-        return df
-
-    # Normalise sources list → string
+    if df.empty: return df
     if "sources" in df.columns:
-        df["sources"] = df["sources"].apply(
-            lambda x: ", ".join(x) if isinstance(x, list) else str(x or "")
-        )
-
-    # Datetime columns
-    for col in ("first_seen", "last_seen", "last_abuse_time"):
+        df["sources"] = df["sources"].apply(lambda x:", ".join(x) if isinstance(x,list) else str(x or ""))
+    for col in ["confidence_score","abuse_reports","ml_score","rf_prob","xgb_prob"]:
+        if col in df.columns: df[col] = pd.to_numeric(df[col], errors="coerce")
+    for col in ["country","city","isp"]:
+        if col in df.columns: df[col] = df[col].replace([None,"None","nan",""],"—").fillna("—")
+    if "ml_risk" not in df.columns: df["ml_risk"] = df.get("risk","LOW")
+    df["ml_risk"] = df["ml_risk"].fillna("LOW")
+    if "ml_score" not in df.columns: df["ml_score"] = None
+    if "enriched" not in df.columns: df["enriched"] = False
+    df["STATUS"] = df["enriched"].apply(lambda x:"ENRICHED" if x is True else "PENDING")
+    for col in ("first_seen","last_seen"):
         if col in df.columns:
-            df[col] = pd.to_datetime(df[col], errors="coerce")
-
-    # Use ML risk if available, else feed-level risk
-    if "ml_risk" not in df.columns:
-        df["ml_risk"] = df.get("risk", "LOW")
-    df["ml_risk"] = df["ml_risk"].fillna(df.get("risk", "LOW"))
-
-    if "ml_score" not in df.columns:
-        df["ml_score"] = None
-
+            df[col] = pd.to_datetime(df[col], errors="coerce").dt.strftime("%Y-%m-%d %H:%M").fillna("—")
     return df
 
+def crow(row):
+    r = row.get("ml_risk","")
+    if r=="HIGH":   return ["background-color:#f8514918;color:#f0b4b0"]*len(row)
+    if r=="MEDIUM": return ["background-color:#f0883e18;color:#f0c090"]*len(row)
+    return ["color:#8b949e"]*len(row)
 
-# ── Sidebar ────────────────────────────────────────────────────────────────────
+def now_utc():
+    utc = datetime.now(timezone.utc)
+    ist = utc + timedelta(hours=5, minutes=30)
+    return f"{utc.strftime('%H:%M:%S')} UTC  ·  {ist.strftime('%H:%M:%S')} IST"
+
+def render_footer():
+    st.markdown("""<div style="position:fixed;bottom:0;left:0;right:0;z-index:9998;
+        background:linear-gradient(90deg,#0d1117,#111827,#0d1117);
+        border-top:1px solid #21e06a22;padding:0 24px;height:44px;
+        display:flex;align-items:center;justify-content:space-between;">
+      <div style="display:flex;align-items:center;gap:4px;font-size:0.62rem;">
+        <span style="color:#484f58;letter-spacing:1px;margin-right:6px">BUILT BY</span>
+        <a href="https://www.linkedin.com/in/shahsoham2003/" target="_blank"
+           style="color:#8b949e;text-decoration:none;padding:3px 8px;border-radius:4px;border:1px solid transparent"
+           onmouseover="this.style.color='#0a66c2';this.style.borderColor='#0a66c244'"
+           onmouseout="this.style.color='#8b949e';this.style.borderColor='transparent'">
+          LinkedIn · Soham Shah</a>
+        <span style="color:#21262d;margin:0 2px">|</span>
+        <a href="https://github.com/soham7998/sentinel_TI" target="_blank"
+           style="color:#8b949e;text-decoration:none;padding:3px 8px;border-radius:4px;border:1px solid transparent"
+           onmouseover="this.style.color='#c9d1d9';this.style.borderColor='#30363d'"
+           onmouseout="this.style.color='#8b949e';this.style.borderColor='transparent'">
+          GitHub · sentinel_TI</a>
+        <span style="color:#21262d;margin:0 2px">|</span>
+        <a href="mailto:soham27@somaiya.edu"
+           style="color:#8b949e;text-decoration:none;padding:3px 8px;border-radius:4px;border:1px solid transparent"
+           onmouseover="this.style.color='#21e06a';this.style.borderColor='#21e06a44'"
+           onmouseout="this.style.color='#8b949e';this.style.borderColor='transparent'">
+          soham27@somaiya.edu</a>
+      </div>
+      <div style="font-size:0.62rem;color:#484f58;text-align:right">
+        <span style="color:#21e06a;font-weight:800;letter-spacing:2px">🛡 SENTINELTI</span>
+        <span style="color:#21262d;margin:0 6px">·</span>© 2026 All Rights Reserved
+      </div>
+    </div>""", unsafe_allow_html=True)
+
+# ── Load ──
+status        = api("/status", silent=True) or {}
+fetch_running = status.get("fetch_in_progress", False)
+ml_running    = status.get("ml_in_progress", False)
+df            = load_df()
+total_iocs    = status.get("total",0)
+high_c        = status.get("high",0)
+med_c         = status.get("medium",0)
+low_c         = status.get("low",0)
+enr_n         = status.get("enriched",0)
+ml_n          = status.get("ml_scored",0)
+
+# ══ SIDEBAR ══
 with st.sidebar:
-    st.image("https://img.shields.io/badge/SentinelTI-SOC%20Dashboard-blue?style=for-the-badge", width=240)
-    st.markdown("---")
-
-    status = api("/status") or {}
-    fetch_running = status.get("fetch_in_progress", False)
-    ml_running    = status.get("ml_in_progress", False)
+    st.markdown('<div style="font-size:1rem;font-weight:800;color:#21e06a;letter-spacing:2px;padding:4px 0 2px 0">🛡 SENTINELTI</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:0.6rem;color:#58a6ff;letter-spacing:1px;margin-bottom:10px">EXPLAINABLE THREAT INTELLIGENCE</div>', unsafe_allow_html=True)
 
     if fetch_running:
-        st.warning("⏳ Fetching & enriching…")
+        st.warning(f"⏳ Enriching {enr_n}/{total_iocs}…")
+        st.progress(enr_n/max(total_iocs,1))
     elif ml_running:
-        st.info("🧠 ML scoring in progress…")
+        p = api("/ml/score/progress", silent=True) or {}
+        st.info(f"🧠 Scoring {p.get('scored',0)}/{p.get('total',0)}")
+        st.progress(p.get("scored",0)/max(p.get("total",1),1))
     else:
-        st.success("✅ System idle")
+        if total_iocs>0 and ml_n==total_iocs: st.success(f"✅ Ready — {total_iocs} IOCs scored")
+        elif total_iocs>0: st.success(f"✅ {total_iocs} IOCs · {enr_n} enriched")
+        else: st.info("📡 Click FETCH FEEDS to start")
 
-    st.markdown("---")
-    st.markdown("### Actions")
+    st.markdown('<div class="sec-hdr">COMMAND PANEL</div>', unsafe_allow_html=True)
+    lim = st.select_slider("IOC Limit", options=[25,50,100,200], value=50,
+                           help="25≈1min | 50≈2min | 100≈5min | 200≈15min")
 
-    enrich_limit = st.select_slider(
-        "IOC Limit", options=[25, 50, 100, 200], value=50,
-        help="25 = ~1 min | 50 = ~2 min | 100 = ~5 min | 200 = ~15 min"
-    )
+    if st.button("⬆  FETCH FEEDS", disabled=fetch_running, use_container_width=True):
+        api(f"/fetch?limit={lim}", method="POST")
+        st.toast(f"Fetching {lim} IOCs…", icon="📡"); time.sleep(1); st.rerun()
 
-    if st.button("🚀 Fetch Now", disabled=fetch_running, use_container_width=True):
-        api(f"/fetch?limit={enrich_limit}", method="POST")
-        st.toast(f"Fetching {enrich_limit} IOCs…", icon="⏳")
-        time.sleep(1)
-        st.rerun()
-
-    # Show enrichment progress bar
     if fetch_running:
-        enriched_so_far = status.get("enriched", 0)
-        total_so_far    = status.get("total", 1)
-        pct = enriched_so_far / max(total_so_far, 1)
-        st.progress(pct, text=f"Enriched {enriched_so_far}/{total_so_far}")
+        st.progress(enr_n/max(total_iocs,1), text=f"Enriched {enr_n}/{total_iocs}")
 
-    if st.button("🧠 Run ML Scoring", disabled=(fetch_running or ml_running), use_container_width=True):
-        enriched_count = status.get("enriched", 0)
-        with st.spinner(f"Scoring {enriched_count} enriched IOCs with RF+XGBoost…"):
-            result = api("/ml/score", method="POST")
-            if result and result.get("status") == "done":
-                st.success(f"✅ ML Scoring complete — {result.get('scored', 0)} of {result.get('total', 0)} IOCs scored!")
-            elif result:
-                st.info(str(result))
-        st.rerun()
+    if st.button("⚡  RUN ML SCORING", disabled=(fetch_running or ml_running), use_container_width=True):
+        api("/ml/score", method="POST")
+        st.toast("ML scoring started", icon="🧠"); time.sleep(1); st.rerun()
 
     if ml_running:
-        prog = api("/ml/score/progress") or {}
-        scored_n = prog.get("scored", 0)
-        total_n  = prog.get("total", 1)
-        pct_n    = prog.get("pct", 0)
-        st.progress(scored_n / max(total_n, 1),
-                    text=f"ML Scoring: {scored_n}/{total_n} ({pct_n}%)")
+        p2 = api("/ml/score/progress", silent=True) or {}
+        st.progress(p2.get("scored",0)/max(p2.get("total",1),1),
+                    text=f"Scoring {p2.get('scored',0)}/{p2.get('total',0)}")
 
-    st.markdown("---")
-    st.markdown("### Summary")
-    for label, key, colour in [
-        ("Total IOCs",  "total",  "#90caf9"),
-        ("HIGH",        "high",   "#ef9a9a"),
-        ("MEDIUM",      "medium", "#ffcc80"),
-        ("LOW",         "low",    "#a5d6a7"),
-        ("Enriched",    "enriched","#ce93d8"),
-        ("ML Scored",   "ml_scored","#80deea"),
-    ]:
-        val = status.get(key, "–")
-        st.markdown(
-            f'<div style="display:flex;justify-content:space-between;margin:4px 0">'
-            f'<span style="color:{colour}">{label}</span>'
-            f'<strong>{val}</strong></div>',
-            unsafe_allow_html=True,
-        )
+    if st.button("🗑  CLEAR DB", disabled=fetch_running, use_container_width=True):
+        r = api("/clear", method="POST")
+        if r: st.toast(f"Cleared {r.get('deleted',0)} IOCs", icon="🗑️")
+        time.sleep(0.3); st.rerun()
 
-    st.markdown("---")
-    auto_refresh = st.checkbox("🔄 Auto-refresh (2 min)", value=False)
+    st.markdown('<div class="sec-hdr">FEED STATUS</div>', unsafe_allow_html=True)
+    for name,role,color in [("Abuse.ch","PRIMARY","#21e06a"),("CINS Army","ACTIVE","#21e06a"),
+                              ("OTX","ACTIVE","#21e06a"),("AbuseIPDB","ENRICHMENT","#58a6ff"),
+                              ("VirusTotal","ENRICHMENT","#58a6ff"),("GeoIP","ENRICHMENT","#58a6ff")]:
+        st.markdown(f'<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #21262d22"><span style="font-size:0.72rem;color:#c9d1d9">{name}</span><span style="font-size:0.6rem;color:{color};letter-spacing:1px">{role}</span></div>', unsafe_allow_html=True)
 
+    st.markdown('<div class="sec-hdr">IOC COUNTS</div>', unsafe_allow_html=True)
+    for label,val,color in [("Total IOCs",total_iocs,"#58a6ff"),("HIGH",high_c,"#f85149"),
+                              ("MEDIUM",med_c,"#f0883e"),("LOW",low_c,"#3fb950"),
+                              ("Enriched",enr_n,"#bc8cff"),("ML Scored",ml_n,"#21e06a")]:
+        st.markdown(f'<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid #21262d22"><span style="font-size:0.72rem;color:{color}">{label}</span><span style="font-size:0.9rem;font-weight:800;color:{color}">{val if val else "—"}</span></div>', unsafe_allow_html=True)
 
-# ── Load Data ──────────────────────────────────────────────────────────────────
-df = load_indicators()
+    st.markdown('<div class="sec-hdr">SETTINGS</div>', unsafe_allow_html=True)
+    auto_refresh = st.checkbox("🔄  AUTO-REFRESH 30s", value=False)
 
-# ── Tabs ───────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📡 Live Feed",
-    "🧠 ML Risk Scoring",
-    "🔍 SHAP Global",
-    "🔎 SHAP Local",
-    "📊 Analytics",
+    st.markdown('<div style="font-size:0.6rem;color:#484f58;text-align:center;margin-top:20px;line-height:1.8">SentinelTI v2.0<br>Soham Shah · MSc Sem-4<br>Somaiya Vidyavihar University</div>', unsafe_allow_html=True)
+
+# ══ COMMAND BAR ══
+if fetch_running: spill='<span class="status-pill status-running">● ENRICHING</span>'
+elif ml_running:  spill='<span class="status-pill status-ml">● ML SCORING</span>'
+else:             spill='<span class="status-pill status-idle">● OPERATIONAL</span>'
+
+clock_slot = st.empty()
+clock_slot.markdown(f"""<div class="cmd-bar">
+  <div><div class="cmd-logo">🛡 &nbsp;SENTINELTI</div>
+       <div class="cmd-sub">EXPLAINABLE THREAT INTELLIGENCE PLATFORM</div></div>
+  <div style="display:flex;align-items:center;gap:20px">{spill}
+    <div class="cmd-time">🕐 &nbsp;{now_utc()}</div>
+  </div>
+</div>""", unsafe_allow_html=True)
+
+# ══ KPI CARDS ══
+st.markdown(f"""<div class="kpi-grid">
+  <div class="kpi-card total"><div class="kpi-val">{total_iocs}</div><div class="kpi-lbl">Total IOCs</div><div class="kpi-sub">Active indicators</div></div>
+  <div class="kpi-card high"><div class="kpi-val">{high_c}</div><div class="kpi-lbl">HIGH Risk</div><div class="kpi-sub">Immediate action</div></div>
+  <div class="kpi-card medium"><div class="kpi-val">{med_c}</div><div class="kpi-lbl">MEDIUM Risk</div><div class="kpi-sub">Review required</div></div>
+  <div class="kpi-card low"><div class="kpi-val">{low_c}</div><div class="kpi-lbl">LOW Risk</div><div class="kpi-sub">Monitor</div></div>
+  <div class="kpi-card enrich"><div class="kpi-val">{enr_n}</div><div class="kpi-lbl">Enriched</div><div class="kpi-sub">{f'{enr_n/max(total_iocs,1)*100:.0f}% coverage' if total_iocs else '—'}</div></div>
+  <div class="kpi-card ml"><div class="kpi-val">{ml_n}</div><div class="kpi-lbl">ML Scored</div><div class="kpi-sub">RF+XGBoost</div></div>
+</div>""", unsafe_allow_html=True)
+
+if fetch_running:
+    st.progress(enr_n/max(total_iocs,1), text=f"⏳ Enriching {enr_n}/{total_iocs} — AbuseIPDB · VirusTotal · GeoIP")
+if ml_running:
+    p3 = api("/ml/score/progress", silent=True) or {}
+    st.progress(p3.get("scored",0)/max(p3.get("total",1),1), text=f"🧠 ML Scoring {p3.get('scored',0)}/{p3.get('total',0)}")
+
+# ══ TABS ══
+tab1,tab2,tab3,tab4,tab5,tab6 = st.tabs([
+    "OFFENSE QUEUE","ML RISK ENGINE","SHAP · GLOBAL","SHAP · LOCAL","ANALYTICS","THREAT INTEL · LIVE"
 ])
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 1 – Live Feed
-# ══════════════════════════════════════════════════════════════════════════════
+# ── TAB 1: OFFENSE QUEUE ──
 with tab1:
-    st.markdown("## 📡 Recent Indicators of Compromise")
+    st.markdown('<div class="sec-hdr">ACTIVE OFFENSE QUEUE — INDICATORS OF COMPROMISE</div>', unsafe_allow_html=True)
 
-    if df.empty:
-        st.info("No indicators yet. Click **Fetch Now** in the sidebar.")
+    # NEVER blank — always show something
+    if df.empty and not fetch_running:
+        st.markdown('<div style="text-align:center;padding:60px;color:#484f58;border:1px dashed #21262d;border-radius:6px;margin-top:20px"><div style="font-size:2.5rem">📡</div><div style="font-size:0.9rem;margin-top:12px;letter-spacing:1px">NO ACTIVE THREATS</div><div style="font-size:0.7rem;margin-top:6px">Click FETCH FEEDS in the sidebar to pull live threat intelligence</div></div>', unsafe_allow_html=True)
+    elif df.empty and fetch_running:
+        st.info(f"⏳ Fetching & enriching IOCs… {enr_n}/{total_iocs} done. Table populates automatically.")
+        time.sleep(3); st.rerun()
     else:
-        # Live enrichment banner
         if fetch_running:
-            enriched_n = int(df["enriched"].eq(True).sum()) if "enriched" in df.columns else 0
-            st.info(f"⏳ Enrichment running… {enriched_n}/{len(df)} enriched so far. Refreshing every 5s.")
+            st.info(f"⏳ Enrichment running — {enr_n}/{total_iocs} enriched so far. Data updates every 5s.")
 
-        # Human-readable status column
-        if "enriched" in df.columns:
-            df["status"] = df["enriched"].apply(
-                lambda x: "✅ Enriched" if x is True else "⏳ Pending"
-            )
+        fc1,fc2,fc3,fc4 = st.columns([2,1.5,1.5,2])
+        with fc1: search  = st.text_input("🔍 SEARCH IP / SOURCE", placeholder="e.g. 185.220 or CINS", label_visibility="collapsed")
+        with fc2: risk_f  = st.multiselect("RISK", ["HIGH","MEDIUM","LOW"], default=["HIGH","MEDIUM","LOW"], label_visibility="collapsed")
+        with fc3: enr_f   = st.selectbox("STATUS", ["All","ENRICHED","PENDING"], label_visibility="collapsed")
+        with fc4: sort_by = st.selectbox("SORT BY", ["ml_score ↓","abuse_reports ↓","confidence_score ↓","last_seen ↓"], label_visibility="collapsed")
 
-        # Filter bar
-        col_f1, col_f2, col_f3 = st.columns([2, 2, 3])
-        with col_f1:
-            risk_filter = st.multiselect(
-                "Risk Level", ["HIGH", "MEDIUM", "LOW"],
-                default=["HIGH", "MEDIUM", "LOW"]
-            )
-        with col_f2:
-            enriched_filter = st.selectbox("Enrichment", ["All", "Enriched", "Pending"])
-        with col_f3:
-            search = st.text_input("🔍 Search IP", placeholder="e.g. 185.220")
+        fdf = df.copy()
+        if risk_f and "ml_risk" in fdf.columns: fdf = fdf[fdf["ml_risk"].isin(risk_f)]
+        if enr_f=="ENRICHED":  fdf = fdf[fdf["enriched"]==True]
+        elif enr_f=="PENDING": fdf = fdf[fdf["enriched"]!=True]
+        if search and "indicator" in fdf.columns:
+            mask = fdf["indicator"].str.contains(search, na=False)
+            if "sources" in fdf.columns: mask |= fdf["sources"].str.contains(search, na=False, case=False)
+            fdf = fdf[mask]
+        sc = sort_by.split(" ")[0]
+        if sc in fdf.columns: fdf = fdf.sort_values(sc, ascending=False, na_position="last")
 
-        fdf = df[df["ml_risk"].isin(risk_filter)].copy()
-        if enriched_filter == "Enriched" and "enriched" in fdf.columns:
-            fdf = fdf[fdf["enriched"] == True]
-        elif enriched_filter == "Pending" and "enriched" in fdf.columns:
-            fdf = fdf[fdf["enriched"] != True]
-        if search:
-            fdf = fdf[fdf["indicator"].str.contains(search, na=False)]
+        show = [c for c in ["indicator","ml_risk","ml_score","sources","confidence_score",
+                             "abuse_reports","country","city","isp","STATUS","first_seen","last_seen"] if c in fdf.columns]
+        ren  = {"indicator":"IP ADDRESS","ml_risk":"SEVERITY","ml_score":"RISK SCORE","sources":"FEED SOURCE",
+                "confidence_score":"CONFIDENCE %","abuse_reports":"ABUSE REPORTS","country":"COUNTRY",
+                "city":"CITY","isp":"ISP / ASN","STATUS":"STATUS","first_seen":"FIRST SEEN","last_seen":"LAST SEEN"}
+        st.dataframe(fdf[show].rename(columns=ren).style.apply(crow,axis=1),
+                     use_container_width=True, height=500, hide_index=True)
+        c1,c2,c3 = st.columns(3)
+        c1.caption(f"Showing **{len(fdf)}** of **{len(df)}** indicators")
+        if fetch_running: c2.caption(f"⏳ Enriching {enr_n}/{total_iocs}…")
+        c3.caption(f"🕐 {now_utc()}")
+        if fetch_running: time.sleep(5); st.rerun()
 
-        # Show available columns (more appear as enrichment completes)
-        show_cols = [c for c in [
-            "indicator", "status", "ml_risk", "ml_score",
-            "sources", "score", "confidence_score", "abuse_reports",
-            "country", "city", "isp", "first_seen", "last_seen",
-        ] if c in fdf.columns]
-
-        st.dataframe(
-            fdf[show_cols].style.apply(color_row, axis=1),
-            use_container_width=True,
-            height=500,
-        )
-        st.caption(f"Showing {len(fdf)} of {len(df)} indicators")
-
-        # Fast refresh while enrichment is running
-        if fetch_running:
-            time.sleep(5)
-            st.rerun()
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 2 – ML Risk Scoring
-# ══════════════════════════════════════════════════════════════════════════════
+# ── TAB 2: ML RISK ENGINE ──
 with tab2:
-    st.markdown("## 🧠 ML Risk Score Distribution")
-
+    st.markdown('<div class="sec-hdr">ML RISK ENGINE — RF+XGBOOST STACKING ENSEMBLE</div>', unsafe_allow_html=True)
     if df.empty or "ml_score" not in df.columns or df["ml_score"].isna().all():
-        st.info("No ML scores yet. Click **Run ML Scoring** in the sidebar after fetching.")
+        st.info("Run ML SCORING from the sidebar after fetching IOCs.")
     else:
-        scored_df = df[df["ml_score"].notna()].copy()
+        sdf = df[df["ml_score"].notna()].copy()
+        m1,m2,m3,m4,m5 = st.columns(5)
+        m1.metric("SCORED",len(sdf)); m2.metric("HIGH",int((sdf["ml_risk"]=="HIGH").sum()))
+        m3.metric("MEDIUM",int((sdf["ml_risk"]=="MEDIUM").sum())); m4.metric("LOW",int((sdf["ml_risk"]=="LOW").sum()))
+        m5.metric("AVG SCORE",f"{pd.to_numeric(sdf['ml_score'],errors='coerce').mean():.3f}")
 
-        # Top metrics
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Total Scored",   len(scored_df))
-        c2.metric("HIGH Risk",      int((scored_df["ml_risk"] == "HIGH").sum()),   delta_color="inverse")
-        c3.metric("MEDIUM Risk",    int((scored_df["ml_risk"] == "MEDIUM").sum()))
-        c4.metric("LOW Risk",       int((scored_df["ml_risk"] == "LOW").sum()),    delta_color="normal")
+        st.markdown('<div class="sec-hdr">SCORE DISTRIBUTION</div>', unsafe_allow_html=True)
+        ca,cb = st.columns(2)
+        with ca:
+            scores = pd.to_numeric(sdf["ml_score"],errors="coerce").dropna()
+            cnts,edges = np.histogram(scores,bins=20,range=(0,1))
+            st.bar_chart(pd.DataFrame({"Score":[f"{edges[i]:.2f}" for i in range(len(edges)-1)],"Count":cnts}).set_index("Score"),height=220,color="#58a6ff")
+        with cb:
+            rc = sdf["ml_risk"].value_counts()
+            st.bar_chart(pd.DataFrame({"Level":rc.index,"Count":rc.values}).set_index("Level"),height=220)
 
-        st.markdown("---")
-        col_a, col_b = st.columns(2)
+        st.markdown('<div class="sec-hdr">HIGH SEVERITY OFFENSES</div>', unsafe_allow_html=True)
+        hdf = sdf[sdf["ml_risk"]=="HIGH"].sort_values("ml_score",ascending=False).head(25)
+        sh  = [c for c in ["indicator","ml_score","rf_prob","xgb_prob","sources","confidence_score","abuse_reports","country","isp"] if c in hdf.columns]
+        rn  = {"indicator":"IP","ml_score":"SCORE","rf_prob":"RF","xgb_prob":"XGB","sources":"FEEDS","confidence_score":"CONF%","abuse_reports":"REPORTS","country":"COUNTRY","isp":"ISP"}
+        st.dataframe(hdf[sh].rename(columns=rn).style.apply(crow,axis=1),use_container_width=True,height=280,hide_index=True)
 
-        with col_a:
-            st.markdown("### Risk Score Distribution")
-            hist_data = scored_df["ml_score"].dropna()
-            # Build histogram manually for Streamlit
-            import numpy as np
-            counts, edges = np.histogram(hist_data, bins=20, range=(0, 1))
-            bin_labels = [f"{edges[i]:.2f}" for i in range(len(edges) - 1)]
-            hist_df = pd.DataFrame({"Score Range": bin_labels, "Count": counts})
-            st.bar_chart(hist_df.set_index("Score Range"))
+        st.markdown('<div class="sec-hdr">MODEL ARCHITECTURE</div>', unsafe_allow_html=True)
+        ma1,ma2,ma3,ma4 = st.columns(4)
+        with ma1:
+            st.markdown('<div style="background:#0d1117;border:1px solid #21262d;border-top:3px solid #58a6ff;border-radius:6px;padding:12px"><div style="font-size:0.6rem;color:#8b949e;letter-spacing:1px;margin-bottom:6px">BASE LEARNER 1</div><div style="font-size:1rem;font-weight:700;color:#58a6ff;margin-bottom:4px">Random Forest</div><div style="font-size:0.65rem;color:#3fb950">150 estimators</div><div style="font-size:0.65rem;color:#484f58">max_depth=8 · bootstrap</div></div>', unsafe_allow_html=True)
+        with ma2:
+            st.markdown('<div style="background:#0d1117;border:1px solid #21262d;border-top:3px solid #f0883e;border-radius:6px;padding:12px"><div style="font-size:0.6rem;color:#8b949e;letter-spacing:1px;margin-bottom:6px">BASE LEARNER 2</div><div style="font-size:1rem;font-weight:700;color:#f0883e;margin-bottom:4px">XGBoost</div><div style="font-size:0.65rem;color:#3fb950">150 rounds · lr=0.05</div><div style="font-size:0.65rem;color:#484f58">max_depth=6 · logloss</div></div>', unsafe_allow_html=True)
+        with ma3:
+            st.markdown('<div style="background:#0d1117;border:1px solid #21262d;border-top:3px solid #21e06a;border-radius:6px;padding:12px"><div style="font-size:0.6rem;color:#8b949e;letter-spacing:1px;margin-bottom:6px">META LEARNER</div><div style="font-size:1rem;font-weight:700;color:#21e06a;margin-bottom:4px">Logistic Reg</div><div style="font-size:0.65rem;color:#3fb950">Linear · Interpretable</div><div style="font-size:0.65rem;color:#484f58">β₁·RF + β₂·XGB</div></div>', unsafe_allow_html=True)
+        with ma4:
+            st.markdown('<div style="background:#0d1117;border:1px solid #21262d;border-top:3px solid #bc8cff;border-radius:6px;padding:12px"><div style="font-size:0.6rem;color:#8b949e;letter-spacing:1px;margin-bottom:6px">VALIDATION</div><div style="font-size:1rem;font-weight:700;color:#bc8cff;margin-bottom:4px">5-Fold CV</div><div style="font-size:0.65rem;color:#3fb950">Stratified splits</div><div style="font-size:0.65rem;color:#484f58">stack_method=proba</div></div>', unsafe_allow_html=True)
 
-        with col_b:
-            st.markdown("### Risk Level Breakdown")
-            risk_counts = scored_df["ml_risk"].value_counts().reset_index()
-            risk_counts.columns = ["Risk Level", "Count"]
-            st.bar_chart(risk_counts.set_index("Risk Level"))
-
-        st.markdown("---")
-        st.markdown("### 🔴 Top HIGH Risk IPs")
-        high_df = scored_df[scored_df["ml_risk"] == "HIGH"].sort_values(
-            "ml_score", ascending=False
-        ).head(20)
-
-        show_ml_cols = [c for c in [
-            "indicator", "ml_score", "rf_prob", "xgb_prob",
-            "sources", "confidence_score", "abuse_reports",
-            "country", "isp"
-        ] if c in high_df.columns]
-
-        if not high_df.empty:
-            st.dataframe(
-                high_df[show_ml_cols].style.apply(color_row, axis=1),
-                use_container_width=True,
-            )
-        else:
-            st.info("No HIGH risk IPs yet.")
-
-        st.markdown("### 🟡 Top MEDIUM Risk IPs")
-        med_df = scored_df[scored_df["ml_risk"] == "MEDIUM"].sort_values(
-            "ml_score", ascending=False
-        ).head(10)
-        if not med_df.empty:
-            st.dataframe(med_df[show_ml_cols], use_container_width=True)
-        else:
-            st.info("No MEDIUM risk IPs.")
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 3 – SHAP Global
-# ══════════════════════════════════════════════════════════════════════════════
+# ── TAB 3: SHAP GLOBAL ──
 with tab3:
-    st.markdown("## 🔍 Global SHAP – Feature Importance")
-    st.markdown(
-        "Shows which features contribute most to malicious IP predictions "
-        "across all indicators (mean |SHAP value|)."
-    )
-
-    if st.button("📊 Load Global SHAP"):
-        with st.spinner("Computing SHAP values…"):
+    st.markdown('<div class="sec-hdr">SHAP GLOBAL — FEATURE IMPORTANCE ACROSS ALL IOCs</div>', unsafe_allow_html=True)
+    st.caption("Mean |SHAP value| — which features drive malicious IP predictions globally")
+    if st.button("⚡ COMPUTE GLOBAL SHAP", type="primary"):
+        with st.spinner("Computing SHAP across RF ensemble…"):
             result = api("/ml/shap/global")
-
         if result and "global_shap" in result:
-            shap_df = pd.DataFrame(result["global_shap"])
-            shap_df = shap_df.sort_values("importance", ascending=True)
-
-            st.markdown("### Feature Importance (Mean |SHAP|)")
-            # Horizontal bar chart
-            st.bar_chart(
-                shap_df.set_index("feature")["importance"],
-                horizontal=True,
-                height=400,
-            )
-
-            st.markdown("### Detailed Breakdown")
-            display_df = shap_df.sort_values("importance", ascending=False).copy()
-            display_df["importance"] = display_df["importance"].round(5)
-            display_df["pct"] = display_df["pct"].apply(lambda x: f"{x:.1f}%")
-            display_df.columns = ["Feature", "Mean |SHAP|", "% Contribution"]
-            st.dataframe(display_df, use_container_width=True)
-
-            st.markdown("""
-            **Feature key:**
-            | Feature | Description |
-            |---|---|
-            | `confidence_pct` | AbuseIPDB confidence score (0-100) |
-            | `abuse_reports` | Number of historical abuse reports |
-            | `vt_detections` | VirusTotal malicious vendor count |
-            | `recency_hrs` | Hours since last abuse report |
-            | `freshness` | Inverse of recency (1=very fresh threat) |
-            | `geo_risk` | IP from high-risk country |
-            | `multi_source` | Flagged by >1 feed/enrichment source |
-            | `attack_type_count` | Distinct attack categories |
-            | `source_score` | Normalised feed-level risk score |
-            | `vt_total` | Total VirusTotal vendors checked |
-            """)
-        elif result and "error" in result:
-            st.error(f"SHAP error: {result['error']}")
+            shap_df = pd.DataFrame(result["global_shap"]).sort_values("importance",ascending=False)
+            max_imp = shap_df["importance"].max()
+            st.markdown('<div class="sec-hdr">FEATURE RANKING</div>', unsafe_allow_html=True)
+            for _,row in shap_df.iterrows():
+                pw = int(row["importance"]/max(max_imp,0.001)*100)
+                st.markdown(f'<div style="display:grid;grid-template-columns:160px 1fr 80px 60px;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #21262d18"><div style="font-size:0.72rem;color:#c9d1d9;font-family:monospace">{row["feature"]}</div><div style="background:#21262d;border-radius:2px;height:14px"><div style="width:{pw}%;background:linear-gradient(90deg,#58a6ff66,#58a6ff);height:14px;border-radius:2px"></div></div><div style="font-size:0.7rem;color:#58a6ff;text-align:right">{row["importance"]:.5f}</div><div style="font-size:0.7rem;color:#8b949e;text-align:right">{row["pct"]:.1f}%</div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="sec-hdr">FEATURE LEGEND</div>', unsafe_allow_html=True)
+            legend = {"confidence_pct":"AbuseIPDB confidence score (0–100)","abuse_reports":"Total historical abuse reports",
+                      "vt_detections":"VirusTotal malicious vendor count","recency_hrs":"Hours since last abuse report",
+                      "freshness":"Recency score (1=very fresh)","geo_risk":"High-risk country origin",
+                      "multi_source":"Flagged by >1 feed","attack_type_count":"Distinct attack categories",
+                      "source_score":"Normalised feed weight","vt_total":"VirusTotal vendors checked"}
+            st.dataframe(pd.DataFrame([{"Feature":k,"Description":v} for k,v in legend.items()]),
+                         use_container_width=True, hide_index=True)
+        elif result and "error" in result: st.error(f"SHAP error: {result['error']}")
     else:
-        st.info("Click **Load Global SHAP** to compute feature importance across all indicators.")
+        st.markdown('<div style="text-align:center;padding:40px;color:#484f58;border:1px dashed #21262d;border-radius:6px"><div style="font-size:1.5rem">🔍</div><div style="font-size:0.8rem;margin-top:8px">Click COMPUTE GLOBAL SHAP to analyse feature importance</div><div style="font-size:0.65rem;margin-top:4px;color:#21262d">Requires ML Scoring to be complete</div></div>', unsafe_allow_html=True)
 
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 4 – SHAP Local
-# ══════════════════════════════════════════════════════════════════════════════
+# ── TAB 4: SHAP LOCAL ──
 with tab4:
-    st.markdown("## 🔎 Local SHAP – Per-IP Explanation")
-    st.markdown(
-        "Explains exactly which features pushed a specific IP's risk score "
-        "up or down relative to the baseline."
-    )
-
+    st.markdown('<div class="sec-hdr">SHAP LOCAL — PER-IP THREAT EXPLANATION</div>', unsafe_allow_html=True)
+    st.caption("Evidence-based explanation for every risk score — transparent SOC decision making")
     if df.empty:
-        st.info("No indicators loaded yet.")
+        st.info("No indicators loaded.")
     else:
-        ip_options = df["indicator"].dropna().unique().tolist()
-        selected_ip = st.selectbox("Select IP Address", ip_options)
-
-        if st.button("🔍 Explain This IP"):
-            with st.spinner(f"Computing SHAP explanation for {selected_ip}…"):
-                result = api(f"/ml/shap/local/{selected_ip}")
-
+        high_ips = df[df["ml_risk"]=="HIGH"]["indicator"].dropna().tolist()
+        med_ips  = df[df["ml_risk"]=="MEDIUM"]["indicator"].dropna().tolist()
+        other_ips= df[~df["ml_risk"].isin(["HIGH","MEDIUM"])]["indicator"].dropna().tolist()
+        all_ips  = high_ips+med_ips+other_ips
+        ic,bc = st.columns([3,1])
+        with ic:
+            sel = st.selectbox("IP", all_ips, format_func=lambda ip:f"{'🔴' if ip in high_ips else '🟡' if ip in med_ips else '🟢'} {ip}", label_visibility="collapsed")
+        with bc:
+            go = st.button("⚡ EXPLAIN", type="primary", use_container_width=True)
+        if go:
+            with st.spinner(f"Computing SHAP for {sel}…"):
+                result = api(f"/ml/shap/local/{sel}")
             if result and "local_shap" in result:
-                risk_score = result.get("risk_score", 0)
-                base_value = result.get("base_value", 0)
+                rs=result.get("risk_score",0); bv=result.get("base_value",0)
+                rl="HIGH" if rs>=0.7 else "MEDIUM" if rs>=0.3 else "LOW"
+                sc="#f85149" if rl=="HIGH" else "#f0883e" if rl=="MEDIUM" else "#3fb950"
+                st.markdown(f'<div style="background:#0d1117;border:1px solid {sc}44;border-left:3px solid {sc};border-radius:6px;padding:16px 20px;margin:10px 0"><div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:1.1rem;font-weight:800;color:#c9d1d9;font-family:monospace">{sel}</div><div style="font-size:0.65rem;color:#8b949e;margin-top:4px">BASELINE: {bv:.4f} · DELTA: +{rs-bv:.4f}</div></div><div style="text-align:right"><div style="font-size:2rem;font-weight:900;color:{sc}">{rs:.4f}</div><span class="badge-{rl}">{rl} SEVERITY</span></div></div></div>', unsafe_allow_html=True)
+                sldf=pd.DataFrame(result["local_shap"]); max_ab=sldf["shap_value"].abs().max()
+                st.markdown('<div class="sec-hdr">FEATURE CONTRIBUTION WATERFALL</div>', unsafe_allow_html=True)
+                for _,row in sldf.iterrows():
+                    sv=row["shap_value"]; pw=int(abs(sv)/max(max_ab,0.001)*100)
+                    bc2="#f85149" if sv>0 else "#3fb950"; arr="▲" if sv>0 else "▼"; lbl="INCREASES RISK" if sv>0 else "DECREASES RISK"
+                    st.markdown(f'<div style="display:grid;grid-template-columns:140px 60px 1fr 90px 110px;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid #21262d18"><div style="font-size:0.7rem;color:#c9d1d9;font-family:monospace">{row["feature"]}</div><div style="font-size:0.68rem;color:#8b949e;text-align:right">{row["value"]:.3f}</div><div style="background:#21262d18;border-radius:2px;height:12px"><div style="width:{pw}%;background:{bc2}88;height:12px;border-radius:2px"></div></div><div style="font-size:0.7rem;color:{bc2};text-align:right;font-weight:700">{arr} {abs(sv):.5f}</div><div style="font-size:0.6rem;color:{bc2};letter-spacing:0.5px">{lbl}</div></div>', unsafe_allow_html=True)
+                ipr=df[df["indicator"]==sel]
+                if not ipr.empty:
+                    with st.expander("📋 FULL IOC RECORD"):
+                        rec=ipr.iloc[0].dropna().to_dict(); c1,c2,c3=st.columns(3); flds=list(rec.items()); t=len(flds)//3
+                        for k,v in flds[:t]: c1.markdown(f'<div style="font-size:0.7rem"><span style="color:#8b949e">{k}:</span> {v}</div>', unsafe_allow_html=True)
+                        for k,v in flds[t:t*2]: c2.markdown(f'<div style="font-size:0.7rem"><span style="color:#8b949e">{k}:</span> {v}</div>', unsafe_allow_html=True)
+                        for k,v in flds[t*2:]: c3.markdown(f'<div style="font-size:0.7rem"><span style="color:#8b949e">{k}:</span> {v}</div>', unsafe_allow_html=True)
+            elif result and "error" in result: st.error(f"SHAP: {result['error']}")
+        else:
+            st.markdown('<div style="text-align:center;padding:40px;color:#484f58;border:1px dashed #21262d;border-radius:6px"><div style="font-size:1.5rem">🔎</div><div style="font-size:0.8rem;margin-top:8px">Select IP → EXPLAIN · HIGH risk IPs listed first</div></div>', unsafe_allow_html=True)
 
-                # Header
-                risk_label = "HIGH" if risk_score >= 0.7 else "MEDIUM" if risk_score >= 0.3 else "LOW"
-                badge      = risk_badge(risk_label)
-
-                st.markdown(f"""
-                <div style="background:#1e1e2e;padding:16px;border-radius:10px;margin-bottom:16px">
-                  <h3 style="margin:0">IP: <code>{selected_ip}</code> &nbsp; {badge}</h3>
-                  <p style="margin:8px 0 0 0">
-                    ML Risk Score: <strong>{risk_score:.4f}</strong> &nbsp;|&nbsp;
-                    Baseline: <strong>{base_value:.4f}</strong>
-                  </p>
-                </div>
-                """, unsafe_allow_html=True)
-
-                shap_local_df = pd.DataFrame(result["local_shap"])
-
-                # Waterfall-style bar chart
-                st.markdown("### Feature Contributions to Risk Score")
-                chart_df = shap_local_df.sort_values("shap_value", ascending=True).copy()
-
-                # Colour positive (red = increases risk) vs negative (green = decreases)
-                chart_df["colour_label"] = chart_df["shap_value"].apply(
-                    lambda v: "Increases Risk" if v > 0 else "Decreases Risk"
-                )
-
-                positive = chart_df[chart_df["shap_value"] > 0].set_index("feature")["shap_value"]
-                negative = chart_df[chart_df["shap_value"] < 0].set_index("feature")["shap_value"]
-
-                col_pos, col_neg = st.columns(2)
-                with col_pos:
-                    st.markdown("🔴 **Increases Risk**")
-                    if not positive.empty:
-                        st.bar_chart(positive, height=300)
-                    else:
-                        st.info("No features increased risk")
-                with col_neg:
-                    st.markdown("🟢 **Decreases Risk**")
-                    if not negative.empty:
-                        st.bar_chart(negative.abs(), height=300)
-                    else:
-                        st.info("No features decreased risk")
-
-                # Detailed table
-                st.markdown("### Full Explanation Table")
-                display_shap = shap_local_df[
-                    ["feature", "value", "shap_value", "direction"]
-                ].copy()
-                display_shap.columns = ["Feature", "Feature Value", "SHAP Value", "Direction"]
-                display_shap["SHAP Value"] = display_shap["SHAP Value"].round(5)
-
-                def colour_direction(val):
-                    if val == "increases_risk":
-                        return "color: #ef9a9a"
-                    return "color: #a5d6a7"
-
-                st.dataframe(
-                    display_shap.style.applymap(
-                        colour_direction, subset=["Direction"]
-                    ),
-                    use_container_width=True,
-                )
-
-                # Also show the raw IOC details
-                ip_row = df[df["indicator"] == selected_ip]
-                if not ip_row.empty:
-                    with st.expander("📋 Raw IOC Details"):
-                        st.json(ip_row.iloc[0].dropna().to_dict())
-
-            elif result and "error" in result:
-                st.error(f"SHAP error: {result['error']}")
-            else:
-                st.warning("Could not retrieve SHAP explanation.")
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-# TAB 5 – Analytics
-# ══════════════════════════════════════════════════════════════════════════════
+# ── TAB 5: ANALYTICS ──
 with tab5:
-    st.markdown("## 📊 Analytics & Coverage")
-
+    st.markdown('<div class="sec-hdr">THREAT ANALYTICS & INTELLIGENCE COVERAGE</div>', unsafe_allow_html=True)
     if df.empty:
-        st.info("No data yet.")
+        st.info("No data yet. Fetch IOCs first.")
     else:
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.markdown("### 🌍 Top Countries")
-            if "country" in df.columns:
-                country_df = (
-                    df["country"]
-                    .replace("", "Unknown")
-                    .fillna("Unknown")
-                    .value_counts()
-                    .head(15)
-                    .reset_index()
-                )
-                country_df.columns = ["Country", "Count"]
-                st.bar_chart(country_df.set_index("Country"), height=350)
-            else:
-                st.info("GeoIP data not yet enriched.")
-
-        with col2:
-            st.markdown("### 🔗 Top Sources")
+        r1,r2 = st.columns(2)
+        with r1:
+            st.markdown('<div class="sec-hdr">TOP COUNTRIES BY THREAT VOLUME</div>', unsafe_allow_html=True)
+            if "country" in df.columns and df["country"].ne("—").any():
+                cdf=df[df["country"]!="—"]["country"].value_counts().head(12).reset_index(); cdf.columns=["Country","Count"]
+                st.bar_chart(cdf.set_index("Country"),height=260,color="#f85149")
+            else: st.caption("GeoIP enrichment pending…")
+        with r2:
+            st.markdown('<div class="sec-hdr">INTELLIGENCE FEED BREAKDOWN</div>', unsafe_allow_html=True)
             if "sources" in df.columns:
-                source_series = (
-                    df["sources"]
-                    .str.split(", ")
-                    .explode()
-                    .str.strip()
-                    .replace("", pd.NA)
-                    .dropna()
-                    .value_counts()
-                    .reset_index()
-                )
-                source_series.columns = ["Source", "Count"]
-                st.bar_chart(source_series.set_index("Source"), height=350)
+                sdf2=df["sources"].str.split(", ").explode().str.strip().replace("",pd.NA).dropna().value_counts().reset_index(); sdf2.columns=["Source","Count"]
+                st.bar_chart(sdf2.set_index("Source"),height=260,color="#58a6ff")
+        r2a,r2b = st.columns(2)
+        with r2a:
+            st.markdown('<div class="sec-hdr">ISP / NETWORK ATTRIBUTION</div>', unsafe_allow_html=True)
+            if "isp" in df.columns and df["isp"].ne("—").any():
+                idf=df[df["isp"]!="—"]["isp"].value_counts().head(10).reset_index(); idf.columns=["ISP","Count"]
+                st.dataframe(idf,use_container_width=True,hide_index=True,height=240)
+            else: st.caption("ISP data pending enrichment…")
+        with r2b:
+            st.markdown('<div class="sec-hdr">IOC INGESTION TIMELINE</div>', unsafe_allow_html=True)
+            if "last_seen" in df.columns:
+                tdf=df[df["last_seen"]!="—"].copy(); tdf["t"]=pd.to_datetime(tdf["last_seen"],errors="coerce").dt.floor("10min")
+                tdf=tdf.dropna(subset=["t"]).groupby("t").size().reset_index(name="IOCs")
+                if not tdf.empty: st.line_chart(tdf.set_index("t")["IOCs"],height=240,color="#21e06a")
+        st.markdown('<div class="sec-hdr">COVERAGE METRICS</div>', unsafe_allow_html=True)
+        cv1,cv2,cv3,cv4,cv5 = st.columns(5)
+        tot2=len(df); enrc=int(df["enriched"].eq(True).sum()) if "enriched" in df.columns else 0
+        mlc=int(df.get("ml_scored",pd.Series(dtype=bool)).eq(True).sum()) if "ml_scored" in df.columns else 0
+        avgc=pd.to_numeric(df.get("confidence_score"),errors="coerce").mean() if "confidence_score" in df.columns else 0
+        avgs=pd.to_numeric(df.get("ml_score"),errors="coerce").mean() if "ml_score" in df.columns else 0
+        cv1.metric("TOTAL IOCs",tot2); cv2.metric("ENRICHED",enrc,delta=f"{enrc/max(tot2,1)*100:.0f}%")
+        cv3.metric("ML SCORED",mlc,delta=f"{mlc/max(tot2,1)*100:.0f}%")
+        cv4.metric("AVG CONFIDENCE",f"{avgc:.1f}%" if avgc else "—")
+        cv5.metric("AVG ML SCORE",f"{avgs:.3f}" if avgs else "—")
 
-        st.markdown("---")
-        col3, col4 = st.columns(2)
+# ── TAB 6: THREAT INTEL LIVE ──
+with tab6:
+    st.markdown('<div class="sec-hdr">GLOBAL THREAT INTELLIGENCE — LAST 48 HOURS</div>', unsafe_allow_html=True)
+    st.caption("Live cybersecurity news · CVEs · Ransomware campaigns · Nation-state activity")
+    import xml.etree.ElementTree as ET
+    from email.utils import parsedate_to_datetime
+    news_sources=[
+        ("https://feeds.feedburner.com/TheHackersNews","The Hacker News","#f85149"),
+        ("https://www.bleepingcomputer.com/feed/","BleepingComputer","#f0883e"),
+        ("https://isc.sans.edu/rssfeed_full.xml","SANS ISC","#58a6ff"),
+        ("https://www.darkreading.com/rss.xml","Dark Reading","#bc8cff"),
+        ("https://cybersecuritynews.com/feed/","CyberSecurity News","#21e06a"),
+        ("https://securityaffairs.com/feed","Security Affairs","#8b949e"),
+    ]
+    all_articles=[]; cutoff=datetime.now(timezone.utc)-timedelta(hours=48)
+    for feed_url,feed_name,feed_color in news_sources:
+        try:
+            r=requests.get(feed_url,timeout=8,headers={"User-Agent":"SentinelTI/2.0"})
+            root=ET.fromstring(r.content)
+            for item in root.findall(".//item")[:12]:
+                title=item.findtext("title","").strip(); link=item.findtext("link","").strip()
+                desc=re.sub(r"<[^>]+>","",item.findtext("description",""))[:220].strip()
+                try:
+                    pub_dt=parsedate_to_datetime(item.findtext("pubDate",""))
+                    if pub_dt.tzinfo is None: pub_dt=pub_dt.replace(tzinfo=timezone.utc)
+                except: pub_dt=datetime.now(timezone.utc)
+                if pub_dt>=cutoff: all_articles.append({"source":feed_name,"color":feed_color,"title":title,"link":link,"time":pub_dt,"summary":desc})
+        except Exception as e: st.caption(f"⚠ {feed_name}: {e}")
+    all_articles.sort(key=lambda x:x["time"],reverse=True)
+    if not all_articles:
+        st.info("No recent articles. Feeds may be temporarily unavailable.")
+    else:
+        src_avail=list(set(a["source"] for a in all_articles))
+        sel_src=st.multiselect("FILTER SOURCE",src_avail,default=src_avail,label_visibility="collapsed")
+        filtered=[a for a in all_articles if a["source"] in sel_src]
+        st.caption(f"📰 {len(filtered)} articles from the last 48h")
+        for art in filtered:
+            ist_t=art["time"]+timedelta(hours=5,minutes=30)
+            age_sec=(datetime.now(timezone.utc)-art["time"]).total_seconds()
+            age_str=f"{age_sec/3600:.0f}h ago" if age_sec>=3600 else f"{age_sec/60:.0f}m ago"
+            c=art["color"]
+            st.markdown(f'''<div style="background:#0d1117;border:1px solid #21262d;border-left:3px solid {c};border-radius:6px;padding:12px 16px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px"><div style="flex:1"><a href="{art['link']}" target="_blank" style="font-size:0.85rem;font-weight:700;color:#c9d1d9;text-decoration:none;line-height:1.3;display:block;margin-bottom:5px">{art['title']}</a><div style="font-size:0.72rem;color:#8b949e;line-height:1.4">{art['summary']}…</div></div><div style="text-align:right;min-width:150px;flex-shrink:0"><div style="font-size:0.65rem;color:{c};font-weight:700;letter-spacing:1px">{art['source']}</div><div style="font-size:0.62rem;color:#484f58;margin-top:4px">{art['time'].strftime('%H:%M')} UTC · {ist_t.strftime('%H:%M')} IST</div><div style="font-size:0.62rem;color:#484f58">{age_str}</div></div></div></div>''', unsafe_allow_html=True)
 
-        with col3:
-            st.markdown("### 🌐 ISP Distribution")
-            if "isp" in df.columns:
-                isp_df = (
-                    df["isp"]
-                    .replace("", "Unknown")
-                    .fillna("Unknown")
-                    .value_counts()
-                    .head(10)
-                    .reset_index()
-                )
-                isp_df.columns = ["ISP", "Count"]
-                st.dataframe(isp_df, use_container_width=True)
-            else:
-                st.info("ISP data not yet available (requires AbuseIPDB enrichment).")
+# ── FOOTER ──
+render_footer()
 
-        with col4:
-            st.markdown("### 🕒 Freshness Over Time")
-            if "last_seen" in df.columns and df["last_seen"].notna().any():
-                time_df = (
-                    df.dropna(subset=["last_seen"])
-                    .assign(hour=df["last_seen"].dt.floor("h"))
-                    .groupby("hour")
-                    .size()
-                    .reset_index(name="count")
-                )
-                st.line_chart(time_df.set_index("hour")["count"], height=250)
-            else:
-                st.info("No timestamp data yet.")
+# ── LIVE CLOCK + AUTO-REFRESH ──
+# Clock always ticks — 30s then full rerun regardless of checkbox
+for _ in range(30):
+    clock_slot.markdown(f"""<div class="cmd-bar">
+  <div><div class="cmd-logo">🛡 &nbsp;SENTINELTI</div>
+       <div class="cmd-sub">EXPLAINABLE THREAT INTELLIGENCE PLATFORM</div></div>
+  <div style="display:flex;align-items:center;gap:20px">{spill}
+    <div class="cmd-time">🕐 &nbsp;{now_utc()}</div>
+  </div>
+</div>""", unsafe_allow_html=True)
+    time.sleep(1)
 
-        st.markdown("---")
-        st.markdown("### 📈 Enrichment & ML Coverage")
-
-        enriched_count   = int(df.get("enriched", pd.Series()).eq(True).sum()) if "enriched" in df.columns else 0
-        ml_scored_count  = int(df.get("ml_scored", pd.Series()).eq(True).sum()) if "ml_scored" in df.columns else 0
-        total            = len(df)
-
-        cov1, cov2, cov3 = st.columns(3)
-        cov1.metric("Total IOCs",       total)
-        cov2.metric("Enriched",         enriched_count,
-                    delta=f"{enriched_count/total*100:.1f}%" if total else "0%")
-        cov3.metric("ML Scored",        ml_scored_count,
-                    delta=f"{ml_scored_count/total*100:.1f}%" if total else "0%")
-
-        if "confidence_score" in df.columns:
-            avg_conf = df["confidence_score"].dropna().mean()
-            st.metric("Avg AbuseIPDB Confidence", f"{avg_conf:.1f}%" if avg_conf else "N/A")
-
-        if "ml_score" in df.columns and df["ml_score"].notna().any():
-            st.markdown("### Score Statistics")
-            st.dataframe(
-                df["ml_score"].dropna().describe().round(4).to_frame("ML Score"),
-                use_container_width=True,
-            )
-
-
-# ── Footer ─────────────────────────────────────────────────────────────────────
-st.markdown("---")
-st.caption("🛡️ SentinelTI | Explainable Threat Intelligence Dashboard | Soham Shah")
-
-# Auto refresh
-if auto_refresh:
-    time.sleep(120)
-    st.rerun()
+st.rerun()
