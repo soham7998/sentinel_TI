@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+requests
+pymongo[srv]
+python-dotenv
+geoip2
+python-dateutil
+scikit-learn
+xgboost
+shap
+numpy
