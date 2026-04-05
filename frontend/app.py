@@ -13,24 +13,12 @@ st.set_page_config(page_title="SentinelTI || SOC", page_icon="🛡️",
 st.markdown("""<style>
 html,body,[class*="css"]{font-family:'JetBrains Mono','Fira Code','Courier New',monospace!important;background:#0a0e17!important;color:#c9d1d9!important;}
 .stApp{background:#0a0e17!important;}
-#MainMenu,footer{visibility:hidden;}
-header{visibility:visible!important;background:transparent!important;height:auto!important;}
-header [data-testid="stToolbar"]{display:none!important;}
+#MainMenu,footer{visibility:hidden;} header{visibility:visible!important;background:transparent!important;height:auto!important;} header [data-testid="stToolbar"]{display:none!important;}
 .block-container{padding:0 1rem 3.5rem 1rem!important;max-width:100%!important;}
-
 [data-testid="stSidebar"]{background:#0d1117!important;border-right:2px solid #21e06a33!important;}
 [data-testid="stSidebar"] .stButton>button{background:#161b22!important;border:1px solid #30363d!important;color:#c9d1d9!important;font-size:0.75rem!important;border-radius:4px!important;width:100%!important;margin-bottom:6px!important;padding:8px!important;text-align:left!important;}
 [data-testid="stSidebar"] .stButton>button:hover{border-color:#21e06a!important;color:#21e06a!important;}
-
-/* ── HIDE native arrow — replaced by custom button ── */
-[data-testid="collapsedControl"]{
-    display:none!important;
-    visibility:hidden!important;
-    opacity:0!important;
-    pointer-events:none!important;
-    width:0!important;height:0!important;
-}
-
+[data-testid="collapsedControl"]{display:flex!important;visibility:visible!important;opacity:1!important;}
 .cmd-bar{background:linear-gradient(90deg,#0d1117,#161b22);border-bottom:1px solid #21e06a22;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;margin:-1rem -1rem 1rem -1rem;}
 .cmd-logo{font-size:1.1rem;font-weight:800;letter-spacing:2px;color:#21e06a;}
 .cmd-sub{font-size:0.65rem;color:#58a6ff;letter-spacing:1px;}
@@ -48,6 +36,7 @@ header [data-testid="stToolbar"]{display:none!important;}
 .kpi-lbl{font-size:0.6rem;color:#8b949e;text-transform:uppercase;letter-spacing:1px;}
 .kpi-sub{font-size:0.58rem;color:#484f58;margin-top:2px;}
 .sec-hdr{font-size:0.62rem;color:#8b949e;text-transform:uppercase;letter-spacing:2px;border-bottom:1px solid #21262d;padding-bottom:4px;margin:14px 0 8px 0;}
+.model-card{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:12px 14px;margin-bottom:0;}
 .badge-HIGH{background:#f8514922;color:#f85149;border:1px solid #f8514966;padding:2px 8px;border-radius:3px;font-size:0.7rem;font-weight:700;}
 .badge-MEDIUM{background:#f0883e22;color:#f0883e;border:1px solid #f0883e66;padding:2px 8px;border-radius:3px;font-size:0.7rem;font-weight:700;}
 .badge-LOW{background:#3fb95022;color:#3fb950;border:1px solid #3fb95066;padding:2px 8px;border-radius:3px;font-size:0.7rem;font-weight:700;}
@@ -61,163 +50,7 @@ header [data-testid="stToolbar"]{display:none!important;}
 [data-testid="metric-container"]{background:#0d1117;border:1px solid #21262d;border-radius:6px;padding:10px 14px;}
 [data-testid="metric-container"] label{color:#8b949e!important;font-size:0.65rem!important;text-transform:uppercase;letter-spacing:1px;}
 [data-testid="metric-container"] [data-testid="stMetricValue"]{color:#c9d1d9!important;font-size:1.5rem!important;font-weight:800!important;}
-
-/* ════════════════════════════════════
-   CUSTOM ANIMATED SIDEBAR TOGGLE
-   Fixed on left edge — always visible
-   ════════════════════════════════════ */
-#stl-toggle {
-    position: fixed;
-    top: 50vh;
-    left: 0;
-    transform: translateY(-50%);
-    z-index: 999999;
-
-    width: 40px;
-    height: 58px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    background: #0d1117;
-    border: 1.5px solid #21e06a44;
-    border-left: none;
-    border-radius: 0 13px 13px 0;
-    cursor: pointer;
-    user-select: none;
-
-    transition:
-        width        0.24s cubic-bezier(.4,0,.2,1),
-        background   0.18s ease,
-        border-color 0.2s  ease,
-        box-shadow   0.24s ease;
-}
-#stl-toggle:hover {
-    width: 54px;
-    background: #0e1f14;
-    border-color: #21e06a;
-    box-shadow: 5px 0 28px #21e06a28, 0 0 0 1px #21e06a1a;
-}
-
-/* entrance pulse — grabs attention on load */
-@keyframes stl-pulse {
-    0%   { box-shadow: 4px 0 0  0    #21e06a77; }
-    65%  { box-shadow: 4px 0 0  16px #21e06a00; }
-    100% { box-shadow: 4px 0 0  0    #21e06a00; }
-}
-#stl-toggle.pulsing { animation: stl-pulse 1.5s ease-out 4; }
-
-/* hamburger bars */
-.stl-hbg { display:flex; flex-direction:column; gap:5px; pointer-events:none; }
-.stl-hbg span {
-    display: block;
-    width: 18px; height: 2px;
-    background: #21e06a;
-    border-radius: 2px;
-    transform-origin: center;
-    transition:
-        transform   0.27s cubic-bezier(.4,0,.2,1),
-        opacity     0.2s  ease,
-        width       0.2s  ease,
-        background  0.2s  ease;
-}
-/* hover: outer bars nudge wider */
-#stl-toggle:hover .stl-hbg span:nth-child(1),
-#stl-toggle:hover .stl-hbg span:nth-child(3) { width: 21px; }
-#stl-toggle:hover .stl-hbg span:nth-child(2) { width: 13px; }
-
-/* open → X morph */
-#stl-toggle.open .stl-hbg span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
-#stl-toggle.open .stl-hbg span:nth-child(2) { opacity: 0; width: 0; }
-#stl-toggle.open .stl-hbg span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
-
-/* slide-in tooltip */
-#stl-toggle::after {
-    content: attr(data-tip);
-    position: absolute;
-    left: calc(100% + 10px);
-    font-size: 0.5rem;
-    font-family: 'JetBrains Mono', monospace;
-    letter-spacing: 2px;
-    color: #21e06a;
-    white-space: nowrap;
-    opacity: 0;
-    transform: translateX(-5px);
-    transition: opacity 0.16s ease, transform 0.16s ease;
-    pointer-events: none;
-}
-#stl-toggle:hover::after { opacity: 1; transform: translateX(0); }
 </style>""", unsafe_allow_html=True)
-
-# ══════════════════════════════════════════════════════════
-#  ANIMATED SIDEBAR TOGGLE BUTTON
-#  — pure HTML div injected above Streamlit's tree
-#  — JS clicks Streamlit's hidden native button to open/close
-#  — ResizeObserver keeps X/☰ icon in sync with actual state
-#  — Keyboard shortcut  [  also works (matches Railway default)
-# ══════════════════════════════════════════════════════════
-st.markdown("""
-<div id="stl-toggle" class="pulsing" data-tip="MENU" onclick="stlToggle()">
-  <div class="stl-hbg"><span></span><span></span><span></span></div>
-</div>
-
-<script>
-(function(){
-    const btn = document.getElementById('stl-toggle');
-    let open = false;
-
-    // remove entrance pulse after 4 cycles (~6s)
-    setTimeout(() => btn.classList.remove('pulsing'), 6500);
-
-    function findNativeBtn() {
-        const tries = [
-            '[data-testid="collapsedControl"]',
-            '[data-testid="stSidebarCollapsedControl"]',
-            'button[aria-label="open sidebar"]',
-            'button[aria-label="close sidebar"]',
-            'button[kind="header"]',
-        ];
-        for (const sel of tries) {
-            const el = document.querySelector(sel);
-            if (el) return el;
-        }
-        return null;
-    }
-
-    function setIcon(isOpen) {
-        open = isOpen;
-        btn.classList.toggle('open', isOpen);
-        btn.setAttribute('data-tip', isOpen ? 'CLOSE' : 'MENU');
-    }
-
-    window.stlToggle = function() {
-        const nb = findNativeBtn();
-        if (nb) { nb.click(); }
-        // optimistically flip icon; ResizeObserver corrects if needed
-        setIcon(!open);
-    };
-
-    // sync icon to actual sidebar width
-    function watchSidebar() {
-        const sb = document.querySelector('[data-testid="stSidebar"]');
-        if (!sb) { setTimeout(watchSidebar, 400); return; }
-        new ResizeObserver(entries => {
-            const w = entries[0].contentRect.width;
-            setIcon(w > 60);
-        }).observe(sb);
-    }
-    setTimeout(watchSidebar, 700);
-
-    // keyboard shortcut: [ key
-    document.addEventListener('keydown', e => {
-        if (e.key === '[' && !e.target.matches('input,textarea,select')) {
-            stlToggle();
-        }
-    });
-})();
-</script>
-""", unsafe_allow_html=True)
-
 
 # ── Helpers ──
 def api(path, method="GET", silent=False, **kw):
@@ -313,7 +146,6 @@ def render_footer():
   </div>
 </div>""", unsafe_allow_html=True)
 
-
 # ── Load ──
 status        = api("/status", silent=True) or {}
 fetch_running = status.get("fetch_in_progress", False)
@@ -348,14 +180,14 @@ with st.sidebar:
     lim = st.select_slider("IOC Limit", options=[25,50,100,200], value=50,
                            help="25≈1min | 50≈2min | 100≈5min | 200≈15min")
 
-    if st.button("⬆  FETCH FEEDS", disabled=fetch_running, use_container_width=True):
+    if st.button("⬆  FETCH FEEDS", disabled=fetch_running, width="stretch"):
         api(f"/fetch?limit={lim}", method="POST")
         st.toast(f"Fetching {lim} IOCs…", icon="📡"); time.sleep(1); st.rerun()
 
     if fetch_running:
         st.progress(enr_n/max(total_iocs,1), text=f"Enriched {enr_n}/{total_iocs}")
 
-    if st.button("⚡  RUN ML SCORING", disabled=(fetch_running or ml_running), use_container_width=True):
+    if st.button("⚡  RUN ML SCORING", disabled=(fetch_running or ml_running), width="stretch"):
         api("/ml/score", method="POST")
         st.toast("ML scoring started", icon="🧠"); time.sleep(1); st.rerun()
 
@@ -364,7 +196,7 @@ with st.sidebar:
         st.progress(p2.get("scored",0)/max(p2.get("total",1),1),
                     text=f"Scoring {p2.get('scored',0)}/{p2.get('total',0)}")
 
-    if st.button("🗑  CLEAR DB", disabled=fetch_running, use_container_width=True):
+    if st.button("🗑  CLEAR DB", disabled=fetch_running, width="stretch"):
         r = api("/clear", method="POST")
         if r: st.toast(f"Cleared {r.get('deleted',0)} IOCs", icon="🗑️")
         time.sleep(0.3); st.rerun()
@@ -383,7 +215,8 @@ with st.sidebar:
 
     st.markdown('<div class="sec-hdr">SETTINGS</div>', unsafe_allow_html=True)
     auto_refresh = st.checkbox("🔄  AUTO-REFRESH 30s", value=False)
-    st.markdown('<div style="font-size:0.6rem;color:#484f58;text-align:center;margin-top:20px;line-height:1.8">SentinelTI v2.0<br>Soham Shah</div>', unsafe_allow_html=True)
+
+    st.markdown('<div style="font-size:0.6rem;color:#484f58;text-align:center;margin-top:20px;line-height:1.8">SentinelTI v2.0<br> Soham Shah <br></div>', unsafe_allow_html=True)
 
 # ══ COMMAND BAR ══
 if fetch_running: spill='<span class="status-pill status-running">● ENRICHING</span>'
@@ -393,21 +226,11 @@ else:             spill='<span class="status-pill status-idle">● OPERATIONAL</
 clock_slot = st.empty()
 clock_slot.markdown(f"""<div class="cmd-bar">
   <div style="display:flex;align-items:center;gap:12px">
-    <div onclick="stlToggle()"
-         style="cursor:pointer;padding:6px 10px;background:#161b22;
-                border:1px solid #21e06a44;border-radius:6px;
-                font-size:0.8rem;color:#21e06a;letter-spacing:2px;
-                transition:all .18s"
-         onmouseover="this.style.borderColor='#21e06a';this.style.background='#0e1f14'"
-         onmouseout="this.style.borderColor='#21e06a44';this.style.background='#161b22'"
-         title="Toggle sidebar  [ shortcut]">☰</div>
-    <div>
-      <div class="cmd-logo">🛡 &nbsp;SENTINELTI</div>
-      <div class="cmd-sub">EXPLAINABLE THREAT INTELLIGENCE PLATFORM</div>
-    </div>
+    <div style="cursor:pointer;padding:6px 10px;background:#161b22;border:1px solid #21e06a44;border-radius:6px;font-size:0.8rem;color:#21e06a;letter-spacing:2px" title="Press [ to toggle sidebar">☰</div>
+    <div><div class="cmd-logo">🛡 &nbsp;SENTINELTI</div>
+         <div class="cmd-sub">EXPLAINABLE THREAT INTELLIGENCE PLATFORM</div></div>
   </div>
-  <div style="display:flex;align-items:center;gap:20px">
-    {spill}
+  <div style="display:flex;align-items:center;gap:20px">{spill}
     <div class="cmd-time">🕐 &nbsp;{now_utc()}</div>
   </div>
 </div>""", unsafe_allow_html=True)
@@ -436,6 +259,8 @@ tab1,tab2,tab3,tab4,tab5,tab6 = st.tabs([
 # ── TAB 1: OFFENSE QUEUE ──
 with tab1:
     st.markdown('<div class="sec-hdr">ACTIVE OFFENSE QUEUE — INDICATORS OF COMPROMISE</div>', unsafe_allow_html=True)
+
+    # NEVER blank — always show something
     if df.empty and not fetch_running:
         st.markdown('<div style="text-align:center;padding:60px;color:#484f58;border:1px dashed #21262d;border-radius:6px;margin-top:20px"><div style="font-size:2.5rem">📡</div><div style="font-size:0.9rem;margin-top:12px;letter-spacing:1px">NO ACTIVE THREATS</div><div style="font-size:0.7rem;margin-top:6px">Click FETCH FEEDS in the sidebar to pull live threat intelligence</div></div>', unsafe_allow_html=True)
     elif df.empty and fetch_running:
@@ -444,11 +269,13 @@ with tab1:
     else:
         if fetch_running:
             st.info(f"⏳ Enrichment running — {enr_n}/{total_iocs} enriched so far. Data updates every 5s.")
+
         fc1,fc2,fc3,fc4 = st.columns([2,1.5,1.5,2])
         with fc1: search  = st.text_input("🔍 SEARCH IP / SOURCE", placeholder="e.g. 185.220 or CINS", label_visibility="collapsed")
         with fc2: risk_f  = st.multiselect("RISK", ["HIGH","MEDIUM","LOW"], default=["HIGH","MEDIUM","LOW"], label_visibility="collapsed")
         with fc3: enr_f   = st.selectbox("STATUS", ["All","ENRICHED","PENDING"], label_visibility="collapsed")
         with fc4: sort_by = st.selectbox("SORT BY", ["ml_score ↓","abuse_reports ↓","confidence_score ↓","last_seen ↓"], label_visibility="collapsed")
+
         fdf = df.copy()
         if risk_f and "ml_risk" in fdf.columns: fdf = fdf[fdf["ml_risk"].isin(risk_f)]
         if enr_f=="ENRICHED":  fdf = fdf[fdf["enriched"]==True]
@@ -459,13 +286,14 @@ with tab1:
             fdf = fdf[mask]
         sc = sort_by.split(" ")[0]
         if sc in fdf.columns: fdf = fdf.sort_values(sc, ascending=False, na_position="last")
+
         show = [c for c in ["indicator","ml_risk","ml_score","sources","confidence_score",
                              "abuse_reports","country","city","isp","STATUS","first_seen","last_seen"] if c in fdf.columns]
         ren  = {"indicator":"IP ADDRESS","ml_risk":"SEVERITY","ml_score":"RISK SCORE","sources":"FEED SOURCE",
                 "confidence_score":"CONFIDENCE %","abuse_reports":"ABUSE REPORTS","country":"COUNTRY",
                 "city":"CITY","isp":"ISP / ASN","STATUS":"STATUS","first_seen":"FIRST SEEN","last_seen":"LAST SEEN"}
         st.dataframe(fdf[show].rename(columns=ren).style.apply(crow,axis=1),
-                     use_container_width=True, height=500, hide_index=True)
+                     width="stretch", height=500, hide_index=True)
         c1,c2,c3 = st.columns(3)
         c1.caption(f"Showing **{len(fdf)}** of **{len(df)}** indicators")
         if fetch_running: c2.caption(f"⏳ Enriching {enr_n}/{total_iocs}…")
@@ -483,6 +311,7 @@ with tab2:
         m1.metric("SCORED",len(sdf)); m2.metric("HIGH",int((sdf["ml_risk"]=="HIGH").sum()))
         m3.metric("MEDIUM",int((sdf["ml_risk"]=="MEDIUM").sum())); m4.metric("LOW",int((sdf["ml_risk"]=="LOW").sum()))
         m5.metric("AVG SCORE",f"{pd.to_numeric(sdf['ml_score'],errors='coerce').mean():.3f}")
+
         st.markdown('<div class="sec-hdr">SCORE DISTRIBUTION</div>', unsafe_allow_html=True)
         ca,cb = st.columns(2)
         with ca:
@@ -492,11 +321,13 @@ with tab2:
         with cb:
             rc = sdf["ml_risk"].value_counts()
             st.bar_chart(pd.DataFrame({"Level":rc.index,"Count":rc.values}).set_index("Level"),height=220)
+
         st.markdown('<div class="sec-hdr">HIGH SEVERITY OFFENSES</div>', unsafe_allow_html=True)
         hdf = sdf[sdf["ml_risk"]=="HIGH"].sort_values("ml_score",ascending=False).head(25)
         sh  = [c for c in ["indicator","ml_score","rf_prob","xgb_prob","sources","confidence_score","abuse_reports","country","isp"] if c in hdf.columns]
         rn  = {"indicator":"IP","ml_score":"SCORE","rf_prob":"RF","xgb_prob":"XGB","sources":"FEEDS","confidence_score":"CONF%","abuse_reports":"REPORTS","country":"COUNTRY","isp":"ISP"}
-        st.dataframe(hdf[sh].rename(columns=rn).style.apply(crow,axis=1),use_container_width=True,height=280,hide_index=True)
+        st.dataframe(hdf[sh].rename(columns=rn).style.apply(crow,axis=1),width="stretch",height=280,hide_index=True)
+
         st.markdown('<div class="sec-hdr">MODEL ARCHITECTURE</div>', unsafe_allow_html=True)
         ma1,ma2,ma3,ma4 = st.columns(4)
         with ma1:
@@ -529,7 +360,7 @@ with tab3:
                       "multi_source":"Flagged by >1 feed","attack_type_count":"Distinct attack categories",
                       "source_score":"Normalised feed weight","vt_total":"VirusTotal vendors checked"}
             st.dataframe(pd.DataFrame([{"Feature":k,"Description":v} for k,v in legend.items()]),
-                         use_container_width=True, hide_index=True)
+                         width="stretch", hide_index=True)
         elif result and "error" in result: st.error(f"SHAP error: {result['error']}")
     else:
         st.markdown('<div style="text-align:center;padding:40px;color:#484f58;border:1px dashed #21262d;border-radius:6px"><div style="font-size:1.5rem">🔍</div><div style="font-size:0.8rem;margin-top:8px">Click COMPUTE GLOBAL SHAP to analyse feature importance</div><div style="font-size:0.65rem;margin-top:4px;color:#21262d">Requires ML Scoring to be complete</div></div>', unsafe_allow_html=True)
@@ -549,7 +380,7 @@ with tab4:
         with ic:
             sel = st.selectbox("IP", all_ips, format_func=lambda ip:f"{'🔴' if ip in high_ips else '🟡' if ip in med_ips else '🟢'} {ip}", label_visibility="collapsed")
         with bc:
-            go = st.button("⚡ EXPLAIN", type="primary", use_container_width=True)
+            go = st.button("⚡ EXPLAIN", type="primary", width="stretch")
         if go:
             with st.spinner(f"Computing SHAP for {sel}…"):
                 result = api(f"/ml/shap/local/{sel}")
@@ -598,7 +429,7 @@ with tab5:
             st.markdown('<div class="sec-hdr">ISP / NETWORK ATTRIBUTION</div>', unsafe_allow_html=True)
             if "isp" in df.columns and df["isp"].ne("—").any():
                 idf=df[df["isp"]!="—"]["isp"].value_counts().head(10).reset_index(); idf.columns=["ISP","Count"]
-                st.dataframe(idf,use_container_width=True,hide_index=True,height=240)
+                st.dataframe(idf,width="stretch",hide_index=True,height=240)
             else: st.caption("ISP data pending enrichment…")
         with r2b:
             st.markdown('<div class="sec-hdr">IOC INGESTION TIMELINE</div>', unsafe_allow_html=True)
@@ -663,25 +494,16 @@ with tab6:
 # ── FOOTER ──
 render_footer()
 
-# ── LIVE CLOCK — always ticks, rerun every 30s ──
+# ── LIVE CLOCK + AUTO-REFRESH ──
+# Clock always ticks — 30s then full rerun regardless of checkbox
 for _ in range(30):
     clock_slot.markdown(f"""<div class="cmd-bar">
   <div style="display:flex;align-items:center;gap:12px">
-    <div onclick="stlToggle()"
-         style="cursor:pointer;padding:6px 10px;background:#161b22;
-                border:1px solid #21e06a44;border-radius:6px;
-                font-size:0.8rem;color:#21e06a;letter-spacing:2px;
-                transition:all .18s"
-         onmouseover="this.style.borderColor='#21e06a';this.style.background='#0e1f14'"
-         onmouseout="this.style.borderColor='#21e06a44';this.style.background='#161b22'"
-         title="Toggle sidebar  [ shortcut]">☰</div>
-    <div>
-      <div class="cmd-logo">🛡 &nbsp;SENTINELTI</div>
-      <div class="cmd-sub">EXPLAINABLE THREAT INTELLIGENCE PLATFORM</div>
-    </div>
+    <div style="cursor:pointer;padding:6px 10px;background:#161b22;border:1px solid #21e06a44;border-radius:6px;font-size:0.8rem;color:#21e06a;letter-spacing:2px" title="Press [ to toggle sidebar">☰</div>
+    <div><div class="cmd-logo">🛡 &nbsp;SENTINELTI</div>
+         <div class="cmd-sub">EXPLAINABLE THREAT INTELLIGENCE PLATFORM</div></div>
   </div>
-  <div style="display:flex;align-items:center;gap:20px">
-    {spill}
+  <div style="display:flex;align-items:center;gap:20px">{spill}
     <div class="cmd-time">🕐 &nbsp;{now_utc()}</div>
   </div>
 </div>""", unsafe_allow_html=True)
