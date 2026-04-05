@@ -5,7 +5,7 @@ import numpy as np
 import streamlit as st
 from datetime import datetime, timezone, timedelta
 
-BACKEND = os.getenv("https://sentinelti-production.up.railway.app")
+BACKEND = os.getenv("BACKEND_URL", "http://backend:8000")
 
 st.set_page_config(page_title="SentinelTI | SOC", page_icon="🛡️",
                    layout="wide", initial_sidebar_state="expanded")
@@ -165,7 +165,7 @@ with st.sidebar:
                            help="25≈1min | 50≈2min | 100≈5min | 200≈15min")
 
     if st.button("⬆  FETCH FEEDS", disabled=fetch_running, use_container_width=True):
-        api(f"/fetch?limit=50", method="POST")
+        api(f"/fetch?limit={lim}", method="POST")
         st.toast(f"Fetching {lim} IOCs…", icon="📡"); time.sleep(1); st.rerun()
 
     if fetch_running:
