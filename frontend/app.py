@@ -54,13 +54,15 @@ html,body,[class*="css"]{font-family:'JetBrains Mono','Fira Code','Courier New',
 </style>""", unsafe_allow_html=True)
 
 # ── Helpers ──
-def api(path, method="POST", silent=False, **kw):
+def api(path, method="GET", silent=False, **kw):
     try:
         fn = requests.post if method=="POST" else requests.get
-        url  = fn(f"{BACKEND}{path}")
-        print("DEBUG URL:", url) 
+        url  = f"{BACKEND}{path}"
+        print("CALLING:", method, url)
+      
         r = fn(url, timeout=8, **kw)
         print("STATUS:", r.status_code)         
+        
         r.raise_for_status()
         return r.json()
     except Exception as e:
