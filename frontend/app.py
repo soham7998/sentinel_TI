@@ -5,122 +5,20 @@ import numpy as np
 import streamlit as st
 from datetime import datetime, timezone, timedelta
 
-BACKEND = os.getenv("BACKEND_URL", "https://sentinelti-production.up.railway.app")
-st.set_page_config(page_title="SentinelTI || SOC", page_icon="🛡️",
+BACKEND = os.getenv("BACKEND_URL", "http://backend:8000")
+
+st.set_page_config(page_title="SentinelTI | SOC", page_icon="🛡️",
                    layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""<style>
 html,body,[class*="css"]{font-family:'JetBrains Mono','Fira Code','Courier New',monospace!important;background:#0a0e17!important;color:#c9d1d9!important;}
 .stApp{background:#0a0e17!important;}
-#MainMenu, footer {
-    visibility: hidden;
-}
-
-/* KEEP HEADER VISIBLE (DO NOT HIDE) */
-header {
-    visibility: visible !important;
-    background: transparent !important;
-    height: auto !important;
-    padding: 0 !important;
-    margin: 0 !important;
-}
-
-/* REMOVE EXTRA HEADER ITEMS BUT KEEP TOGGLE */
-header [data-testid="stToolbar"],
-header [data-testid="stDecoration"],
-header [data-testid="stStatusWidget"] {
-    display: none !important;
-}
-
-/* FORCE SIDEBAR TOGGLE BUTTON VISIBLE */
-[data-testid="collapsedControl"] {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-
-    position: fixed;
-    top: 12px;
-    left: 10px;
-    z-index: 99999;
-
-    background: #0d1117 !important;
-    border: 2px solid #21e06a !important;
-    border-radius: 6px !important;
-    width: 32px !important;
-    height: 32px !important;
-
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-/* HOVER */
-[data-testid="collapsedControl"]:hover {
-    background: #21e06a22 !important;
-}
-
-/* ICON COLOR */
-[data-testid="collapsedControl"] svg {
-    fill: #21e06a !important;
-    color: #21e06a !important;
-}
-/* ───────── CUSTOM SIDEBAR TOGGLE (CENTER LEFT) ───────── */
-#sentinel-toggle {
-    position: fixed;
-    top: 50%;
-    left: 0;
-    transform: translateY(-50%);
-    z-index: 99999;
-
-    width: 42px;
-    height: 64px;
-
-    background: #0d1117;
-    border: 2px solid #21e06a;
-    border-left: none;
-    border-radius: 0 10px 10px 0;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    cursor: pointer;
-}
-
-/* arrow */
-#sentinel-toggle span {
-    display: block;
-    color: #21e06a;
-    font-size: 18px;
-}
-
-/* hover */
-#sentinel-toggle:hover {
-    background: #21e06a22;
-}
-<div id="sentinel-toggle" onclick="toggleSidebar()">
-    <span>❯</span>
-</div>
-
-<script>
-function toggleSidebar() {
-    const btn =
-        window.parent.document.querySelector('[aria-label="Toggle sidebar"]') ||
-        window.parent.document.querySelector('[data-testid="stSidebarCollapseButton"]');
-
-    if (btn) {
-        btn.click();
-    } else {
-        console.log("Sidebar toggle not found");
-    }
-}
-</script>, unsafe_allow_html=True)
+#MainMenu,footer{visibility:hidden;} header{visibility:visible!important;background:transparent!important;height:auto!important;} header [data-testid="stToolbar"]{display:none!important;}
 .block-container{padding:0 1rem 3.5rem 1rem!important;max-width:100%!important;}
 [data-testid="stSidebar"]{background:#0d1117!important;border-right:2px solid #21e06a33!important;}
 [data-testid="stSidebar"] .stButton>button{background:#161b22!important;border:1px solid #30363d!important;color:#c9d1d9!important;font-size:0.75rem!important;border-radius:4px!important;width:100%!important;margin-bottom:6px!important;padding:8px!important;text-align:left!important;}
 [data-testid="stSidebar"] .stButton>button:hover{border-color:#21e06a!important;color:#21e06a!important;}
-# [data-testid="collapsedControl"]{display:flex!important;visibility:visible!important;background:#0d1117!important;border:2px solid #21e06a!important;border-left:none!important;border-radius:0 8px 8px 0!important;width:28px!important;align-items:center!important;justify-content:center!important;}
-# [data-testid="collapsedControl"]:hover{background:#21e06a22!important;}
-# [data-testid="collapsedControl"] svg{fill:#21e06a!important;color:#21e06a!important;}
+[data-testid="collapsedControl"]{display:flex!important;visibility:visible!important;opacity:1!important;}
 .cmd-bar{background:linear-gradient(90deg,#0d1117,#161b22);border-bottom:1px solid #21e06a22;padding:10px 20px;display:flex;align-items:center;justify-content:space-between;margin:-1rem -1rem 1rem -1rem;}
 .cmd-logo{font-size:1.1rem;font-weight:800;letter-spacing:2px;color:#21e06a;}
 .cmd-sub{font-size:0.65rem;color:#58a6ff;letter-spacing:1px;}
@@ -158,12 +56,7 @@ function toggleSidebar() {
 def api(path, method="GET", silent=False, **kw):
     try:
         fn = requests.post if method=="POST" else requests.get
-        url  = f"{BACKEND}{path}"
-        print("CALLING:", method, url)
-      
-        r = fn(url, timeout=8, **kw)
-        print("STATUS:", r.status_code)         
-        
+        r  = fn(f"{BACKEND}{path}", timeout=8, **kw)
         r.raise_for_status()
         return r.json()
     except Exception as e:
@@ -201,7 +94,6 @@ def now_utc():
     utc = datetime.now(timezone.utc)
     ist = utc + timedelta(hours=5, minutes=30)
     return f"{utc.strftime('%H:%M:%S')} UTC  ·  {ist.strftime('%H:%M:%S')} IST"
-
 
 def render_footer():
     st.markdown("""<div style="position:fixed;bottom:0;left:0;right:0;z-index:9998;
@@ -303,7 +195,7 @@ with st.sidebar:
     st.markdown('<div class="sec-hdr">SETTINGS</div>', unsafe_allow_html=True)
     auto_refresh = st.checkbox("🔄  AUTO-REFRESH 30s", value=False)
 
-    st.markdown('<div style="font-size:0.6rem;color:#484f58;text-align:center;margin-top:20px;line-height:1.8"> SentinelTI v2.0 <br> Soham Shah </div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:0.6rem;color:#484f58;text-align:center;margin-top:20px;line-height:1.8">SentinelTI v2.0<br>Soham Shah · MSc Sem-4<br>Somaiya Vidyavihar University</div>', unsafe_allow_html=True)
 
 # ══ COMMAND BAR ══
 if fetch_running: spill='<span class="status-pill status-running">● ENRICHING</span>'
