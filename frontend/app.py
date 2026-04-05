@@ -54,17 +54,34 @@ html,body,[class*="css"]{font-family:'JetBrains Mono','Fira Code','Courier New',
 [data-testid="metric-container"] [data-testid="stMetricValue"]{color:#c9d1d9!important;font-size:1.5rem!important;font-weight:800!important;}
 </style>""", unsafe_allow_html=True)
 
-# ── Helpers ──
+── Helpers ──
 def api(path, method="POST", silent=False, **kw):
     try:
         fn = requests.post if method=="POST" else requests.get
-        url  = fn(f"{BACKEND}{path}", timeout=8, **kw)
-        print("DEBUG URL:", url) 
+        
+        url = f"{BACKEND}{path}"
+        print("DEBUG URL:", url)
+
+        r = fn(url, timeout=8, **kw)
+        print("STATUS:", r.status_code)
+
         r.raise_for_status()
         return r.json()
+        
     except Exception as e:
-        if not silent: st.error(f"⚠ Backend: {e}")
+        if not silent:
+            st.error(f"⚠ Backend: {e}")
         return None
+# def api(path, method="POST", silent=False, **kw):
+#     try:
+#         fn = requests.post if method=="POST" else requests.get
+#         url  = fn(f"{BACKEND}{path}", timeout=8, **kw)
+#         print("DEBUG URL:", url) 
+#         r.raise_for_status()
+#         return r.json()
+#     except Exception as e:
+#         if not silent: st.error(f"⚠ Backend: {e}")
+#         return None
 
 def load_df():
     data = api("/indicators?limit=200", silent=True)
