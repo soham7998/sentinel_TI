@@ -18,8 +18,8 @@ logger = logging.getLogger("backend")
 
 app = FastAPI(title="SentinelTI Backend")
 
-MONGO_URI  = os.getenv("MONGO_URI")
-client     = MongoClient(MONGO_URI)
+MONGO_URL  = os.getenv("MONGO_URL")
+client     = MongoClient(MONGO_URL)
 db         = client["sentinelti"]
 collection = db["indicators"]
 
