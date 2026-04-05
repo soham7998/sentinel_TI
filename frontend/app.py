@@ -96,35 +96,57 @@ def now_utc():
     return f"{utc.strftime('%H:%M:%S')} UTC  ·  {ist.strftime('%H:%M:%S')} IST"
 
 def render_footer():
-    st.markdown("""<div style="position:fixed;bottom:0;left:0;right:0;z-index:9998;
-        background:linear-gradient(90deg,#0d1117,#111827,#0d1117);
-        border-top:1px solid #21e06a22;padding:0 24px;height:44px;
-        display:flex;align-items:center;justify-content:space-between;">
-      <div style="display:flex;align-items:center;gap:4px;font-size:0.62rem;">
-        <span style="color:#484f58;letter-spacing:1px;margin-right:6px">BUILT BY</span>
-        <a href="https://www.linkedin.com/in/shahsoham2003/" target="_blank"
-           style="color:#8b949e;text-decoration:none;padding:3px 8px;border-radius:4px;border:1px solid transparent"
-           onmouseover="this.style.color='#0a66c2';this.style.borderColor='#0a66c244'"
-           onmouseout="this.style.color='#8b949e';this.style.borderColor='transparent'">
-          LinkedIn · Soham Shah</a>
-        <span style="color:#21262d;margin:0 2px">|</span>
-        <a href="https://github.com/soham7998/sentinel_TI" target="_blank"
-           style="color:#8b949e;text-decoration:none;padding:3px 8px;border-radius:4px;border:1px solid transparent"
-           onmouseover="this.style.color='#c9d1d9';this.style.borderColor='#30363d'"
-           onmouseout="this.style.color='#8b949e';this.style.borderColor='transparent'">
-          GitHub · sentinel_TI</a>
-        <span style="color:#21262d;margin:0 2px">|</span>
-        <a href="mailto:soham27@somaiya.edu"
-           style="color:#8b949e;text-decoration:none;padding:3px 8px;border-radius:4px;border:1px solid transparent"
-           onmouseover="this.style.color='#21e06a';this.style.borderColor='#21e06a44'"
-           onmouseout="this.style.color='#8b949e';this.style.borderColor='transparent'">
-          soham27@somaiya.edu</a>
-      </div>
-      <div style="font-size:0.62rem;color:#484f58;text-align:right">
-        <span style="color:#21e06a;font-weight:800;letter-spacing:2px">🛡 SENTINELTI</span>
-        <span style="color:#21262d;margin:0 6px">·</span>© 2026 All Rights Reserved
-      </div>
-    </div>""", unsafe_allow_html=True)
+    st.markdown("""
+<div style="position:fixed;bottom:0;left:0;right:0;z-index:9998;
+     background:linear-gradient(90deg,#0d1117 0%,#0f1318 50%,#0d1117 100%);
+     border-top:1px solid #21e06a22;padding:0 20px;height:46px;
+     display:flex;align-items:center;justify-content:space-between;">
+  <div style="display:flex;align-items:center;gap:6px">
+    <span style="font-size:0.58rem;color:#484f58;letter-spacing:1.5px;text-transform:uppercase;margin-right:4px">Built by</span>
+    <a href="https://www.linkedin.com/in/shahsoham2003/" target="_blank" rel="noopener"
+       style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:5px;
+              border:1px solid #21262d;color:#8b949e;text-decoration:none;font-size:0.65rem;
+              transition:all .2s"
+       onmouseover="this.style.color='#0a66c2';this.style.borderColor='#0a66c2';this.style.background='#0a66c211'"
+       onmouseout="this.style.color='#8b949e';this.style.borderColor='#21262d';this.style.background='transparent'">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
+        <rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/>
+      </svg>
+      Soham Shah
+    </a>
+    <span style="color:#21262d">·</span>
+    <a href="https://github.com/soham7998/sentinel_TI" target="_blank" rel="noopener"
+       style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:5px;
+              border:1px solid #21262d;color:#8b949e;text-decoration:none;font-size:0.65rem"
+       onmouseover="this.style.color='#c9d1d9';this.style.borderColor='#484f58';this.style.background='#21262d'"
+       onmouseout="this.style.color='#8b949e';this.style.borderColor='#21262d';this.style.background='transparent'">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+      </svg>
+      sentinel_TI
+    </a>
+    <span style="color:#21262d">·</span>
+    <a href="mailto:soham27@somaiya.edu"
+       style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:5px;
+              border:1px solid #21262d;color:#8b949e;text-decoration:none;font-size:0.65rem"
+       onmouseover="this.style.color='#21e06a';this.style.borderColor='#21e06a44';this.style.background='#21e06a11'"
+       onmouseout="this.style.color='#8b949e';this.style.borderColor='#21262d';this.style.background='transparent'">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+        <polyline points="22,6 12,13 2,6"/>
+      </svg>
+      soham27@somaiya.edu
+    </a>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;font-size:0.62rem;color:#484f58">
+    <span style="font-size:0.72rem;font-weight:800;color:#21e06a;letter-spacing:2px">🛡 SENTINELTI</span>
+    <span style="color:#21262d">·</span>
+    <span>MSc Sem-4 · Somaiya Vidyavihar University</span>
+    <span style="color:#21262d">·</span>
+    <span>© 2026</span>
+  </div>
+</div>""", unsafe_allow_html=True)
 
 # ── Load ──
 status        = api("/status", silent=True) or {}
@@ -142,6 +164,7 @@ ml_n          = status.get("ml_scored",0)
 with st.sidebar:
     st.markdown('<div style="font-size:1rem;font-weight:800;color:#21e06a;letter-spacing:2px;padding:4px 0 2px 0">🛡 SENTINELTI</div>', unsafe_allow_html=True)
     st.markdown('<div style="font-size:0.6rem;color:#58a6ff;letter-spacing:1px;margin-bottom:10px">EXPLAINABLE THREAT INTELLIGENCE</div>', unsafe_allow_html=True)
+    st.markdown("---")
 
     if fetch_running:
         st.warning(f"⏳ Enriching {enr_n}/{total_iocs}…")
@@ -159,14 +182,14 @@ with st.sidebar:
     lim = st.select_slider("IOC Limit", options=[25,50,100,200], value=50,
                            help="25≈1min | 50≈2min | 100≈5min | 200≈15min")
 
-    if st.button("⬆  FETCH FEEDS", disabled=fetch_running, use_container_width=True):
+    if st.button("⬆  FETCH FEEDS", disabled=fetch_running, width="stretch"):
         api(f"/fetch?limit={lim}", method="POST")
         st.toast(f"Fetching {lim} IOCs…", icon="📡"); time.sleep(1); st.rerun()
 
     if fetch_running:
         st.progress(enr_n/max(total_iocs,1), text=f"Enriched {enr_n}/{total_iocs}")
 
-    if st.button("⚡  RUN ML SCORING", disabled=(fetch_running or ml_running), use_container_width=True):
+    if st.button("⚡  RUN ML SCORING", disabled=(fetch_running or ml_running), width="stretch"):
         api("/ml/score", method="POST")
         st.toast("ML scoring started", icon="🧠"); time.sleep(1); st.rerun()
 
@@ -175,7 +198,7 @@ with st.sidebar:
         st.progress(p2.get("scored",0)/max(p2.get("total",1),1),
                     text=f"Scoring {p2.get('scored',0)}/{p2.get('total',0)}")
 
-    if st.button("🗑  CLEAR DB", disabled=fetch_running, use_container_width=True):
+    if st.button("🗑  CLEAR DB", disabled=fetch_running, width="stretch"):
         r = api("/clear", method="POST")
         if r: st.toast(f"Cleared {r.get('deleted',0)} IOCs", icon="🗑️")
         time.sleep(0.3); st.rerun()
@@ -204,8 +227,11 @@ else:             spill='<span class="status-pill status-idle">● OPERATIONAL</
 
 clock_slot = st.empty()
 clock_slot.markdown(f"""<div class="cmd-bar">
-  <div><div class="cmd-logo">🛡 &nbsp;SENTINELTI</div>
-       <div class="cmd-sub">EXPLAINABLE THREAT INTELLIGENCE PLATFORM</div></div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div style="cursor:pointer;padding:6px 10px;background:#161b22;border:1px solid #21e06a44;border-radius:6px;font-size:0.8rem;color:#21e06a;letter-spacing:2px" title="Press [ to toggle sidebar">☰</div>
+    <div><div class="cmd-logo">🛡 &nbsp;SENTINELTI</div>
+         <div class="cmd-sub">EXPLAINABLE THREAT INTELLIGENCE PLATFORM</div></div>
+  </div>
   <div style="display:flex;align-items:center;gap:20px">{spill}
     <div class="cmd-time">🕐 &nbsp;{now_utc()}</div>
   </div>
@@ -269,7 +295,7 @@ with tab1:
                 "confidence_score":"CONFIDENCE %","abuse_reports":"ABUSE REPORTS","country":"COUNTRY",
                 "city":"CITY","isp":"ISP / ASN","STATUS":"STATUS","first_seen":"FIRST SEEN","last_seen":"LAST SEEN"}
         st.dataframe(fdf[show].rename(columns=ren).style.apply(crow,axis=1),
-                     use_container_width=True, height=500, hide_index=True)
+                     width="stretch", height=500, hide_index=True)
         c1,c2,c3 = st.columns(3)
         c1.caption(f"Showing **{len(fdf)}** of **{len(df)}** indicators")
         if fetch_running: c2.caption(f"⏳ Enriching {enr_n}/{total_iocs}…")
@@ -302,7 +328,7 @@ with tab2:
         hdf = sdf[sdf["ml_risk"]=="HIGH"].sort_values("ml_score",ascending=False).head(25)
         sh  = [c for c in ["indicator","ml_score","rf_prob","xgb_prob","sources","confidence_score","abuse_reports","country","isp"] if c in hdf.columns]
         rn  = {"indicator":"IP","ml_score":"SCORE","rf_prob":"RF","xgb_prob":"XGB","sources":"FEEDS","confidence_score":"CONF%","abuse_reports":"REPORTS","country":"COUNTRY","isp":"ISP"}
-        st.dataframe(hdf[sh].rename(columns=rn).style.apply(crow,axis=1),use_container_width=True,height=280,hide_index=True)
+        st.dataframe(hdf[sh].rename(columns=rn).style.apply(crow,axis=1),width="stretch",height=280,hide_index=True)
 
         st.markdown('<div class="sec-hdr">MODEL ARCHITECTURE</div>', unsafe_allow_html=True)
         ma1,ma2,ma3,ma4 = st.columns(4)
@@ -336,7 +362,7 @@ with tab3:
                       "multi_source":"Flagged by >1 feed","attack_type_count":"Distinct attack categories",
                       "source_score":"Normalised feed weight","vt_total":"VirusTotal vendors checked"}
             st.dataframe(pd.DataFrame([{"Feature":k,"Description":v} for k,v in legend.items()]),
-                         use_container_width=True, hide_index=True)
+                         width="stretch", hide_index=True)
         elif result and "error" in result: st.error(f"SHAP error: {result['error']}")
     else:
         st.markdown('<div style="text-align:center;padding:40px;color:#484f58;border:1px dashed #21262d;border-radius:6px"><div style="font-size:1.5rem">🔍</div><div style="font-size:0.8rem;margin-top:8px">Click COMPUTE GLOBAL SHAP to analyse feature importance</div><div style="font-size:0.65rem;margin-top:4px;color:#21262d">Requires ML Scoring to be complete</div></div>', unsafe_allow_html=True)
@@ -356,7 +382,7 @@ with tab4:
         with ic:
             sel = st.selectbox("IP", all_ips, format_func=lambda ip:f"{'🔴' if ip in high_ips else '🟡' if ip in med_ips else '🟢'} {ip}", label_visibility="collapsed")
         with bc:
-            go = st.button("⚡ EXPLAIN", type="primary", use_container_width=True)
+            go = st.button("⚡ EXPLAIN", type="primary", width="stretch")
         if go:
             with st.spinner(f"Computing SHAP for {sel}…"):
                 result = api(f"/ml/shap/local/{sel}")
@@ -405,7 +431,7 @@ with tab5:
             st.markdown('<div class="sec-hdr">ISP / NETWORK ATTRIBUTION</div>', unsafe_allow_html=True)
             if "isp" in df.columns and df["isp"].ne("—").any():
                 idf=df[df["isp"]!="—"]["isp"].value_counts().head(10).reset_index(); idf.columns=["ISP","Count"]
-                st.dataframe(idf,use_container_width=True,hide_index=True,height=240)
+                st.dataframe(idf,width="stretch",hide_index=True,height=240)
             else: st.caption("ISP data pending enrichment…")
         with r2b:
             st.markdown('<div class="sec-hdr">IOC INGESTION TIMELINE</div>', unsafe_allow_html=True)
@@ -474,8 +500,11 @@ render_footer()
 # Clock always ticks — 30s then full rerun regardless of checkbox
 for _ in range(30):
     clock_slot.markdown(f"""<div class="cmd-bar">
-  <div><div class="cmd-logo">🛡 &nbsp;SENTINELTI</div>
-       <div class="cmd-sub">EXPLAINABLE THREAT INTELLIGENCE PLATFORM</div></div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div style="cursor:pointer;padding:6px 10px;background:#161b22;border:1px solid #21e06a44;border-radius:6px;font-size:0.8rem;color:#21e06a;letter-spacing:2px" title="Press [ to toggle sidebar">☰</div>
+    <div><div class="cmd-logo">🛡 &nbsp;SENTINELTI</div>
+         <div class="cmd-sub">EXPLAINABLE THREAT INTELLIGENCE PLATFORM</div></div>
+  </div>
   <div style="display:flex;align-items:center;gap:20px">{spill}
     <div class="cmd-time">🕐 &nbsp;{now_utc()}</div>
   </div>
