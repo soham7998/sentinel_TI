@@ -59,6 +59,7 @@ def api(path, method="GET", silent=False, **kw):
     try:
         fn = requests.post if method=="POST" else requests.get
         r  = fn(f"{BACKEND}{path}", timeout=8, **kw)
+        print("DEBUG URL:", url) 
         r.raise_for_status()
         return r.json()
     except Exception as e:
