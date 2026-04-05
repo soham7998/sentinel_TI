@@ -23,6 +23,11 @@ client     = MongoClient(MONGO_URL)
 db         = client["sentinelti"]
 collection = db["indicators"]
 
+MONGO_URI = os.getenv("MONGO_URI") or os.getenv("MONGO_URL")
+print("DEBUG MONGO_URI:", MONGO_URI)
+
+client = MongoClient(MONGO_URI)
+
 fetch_lock        = Lock()
 fetch_in_progress = False
 ml_in_progress    = False
