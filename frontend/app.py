@@ -7,7 +7,7 @@ from datetime import datetime, timezone, timedelta
 
 BACKEND = os.getenv("BACKEND_URL", "http://backend:8000")
 
-st.set_page_config(page_title="SentinelTI | SOC", page_icon="🛡️",
+st.set_page_config(page_title="SentinelTI || SOC", page_icon="🛡️",
                    layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""<style>
@@ -142,8 +142,6 @@ def render_footer():
   <div style="display:flex;align-items:center;gap:8px;font-size:0.62rem;color:#484f58">
     <span style="font-size:0.72rem;font-weight:800;color:#21e06a;letter-spacing:2px">🛡 SENTINELTI</span>
     <span style="color:#21262d">·</span>
-    <span>MSc Sem-4 · Somaiya Vidyavihar University</span>
-    <span style="color:#21262d">·</span>
     <span>© 2026</span>
   </div>
 </div>""", unsafe_allow_html=True)
@@ -218,7 +216,7 @@ with st.sidebar:
     st.markdown('<div class="sec-hdr">SETTINGS</div>', unsafe_allow_html=True)
     auto_refresh = st.checkbox("🔄  AUTO-REFRESH 30s", value=False)
 
-    st.markdown('<div style="font-size:0.6rem;color:#484f58;text-align:center;margin-top:20px;line-height:1.8">SentinelTI v2.0<br>Soham Shah · MSc Sem-4<br>Somaiya Vidyavihar University</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:0.6rem;color:#484f58;text-align:center;margin-top:20px;line-height:1.8">SentinelTI v2.0<br> Soham Shah <br></div>', unsafe_allow_html=True)
 
 # ══ COMMAND BAR ══
 if fetch_running: spill='<span class="status-pill status-running">● ENRICHING</span>'
