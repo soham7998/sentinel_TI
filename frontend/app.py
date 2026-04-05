@@ -5,8 +5,7 @@ import numpy as np
 import streamlit as st
 from datetime import datetime, timezone, timedelta
 
-BACKEND = os.getenv("BACKEND_URL", "http://backend:8000")
-
+BACKEND = os.getenv("BACKEND_URL", "https://sentinelti-production.up.railway.app")
 st.set_page_config(page_title="SentinelTI | SOC", page_icon="🛡️",
                    layout="wide", initial_sidebar_state="expanded")
 
