@@ -54,7 +54,7 @@ html,body,[class*="css"]{font-family:'JetBrains Mono','Fira Code','Courier New',
 [data-testid="metric-container"] [data-testid="stMetricValue"]{color:#c9d1d9!important;font-size:1.5rem!important;font-weight:800!important;}
 </style>""", unsafe_allow_html=True)
 
-── Helpers ──
+# ── Helpers ──
 def api(path, method="POST", silent=False, **kw):
     try:
         fn = requests.post if method=="POST" else requests.get
