@@ -1,6 +1,6 @@
 # 🛡️ SentinelTI — Explainable Threat Intelligence Dashboard
 
-**MSc Sem-4 Research Project | Somaiya Vidyavihar University**
+**MSc Sem-4 Research Project || Somaiya Vidyavihar University**
 
 > An Explainable Machine Learning Framework for IP Threat Intelligence and Maliciousness Risk Scoring
 
