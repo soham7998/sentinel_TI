@@ -7,7 +7,7 @@ from datetime import datetime, timezone, timedelta
 
 BACKEND = os.getenv("BACKEND_URL", "http://backend:8000")
 
-st.set_page_config(page_title="SentinelTI | SOC", page_icon="🛡️",
+st.set_page_config(page_title="SentinelTI || SOC", page_icon="🛡️",
                    layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""<style>
@@ -158,10 +158,10 @@ st.markdown(f"""<div class="kpi-grid">
 
 # Progress bars
 if fetch_running:
-    st.progress(enr_n/max(total_iocs,1), text=f"⏳ Enriching {enr_n}/{total_iocs} — AbuseIPDB · VirusTotal · GeoIP")
+    st.progress(enr_n/max(total_iocs,1), text=f"Enriching {enr_n}/{total_iocs} — AbuseIPDB · VirusTotal · GeoIP")
 if ml_running:
     p = api("/ml/score/progress", silent=True) or {}
-    st.progress(p.get("scored",0)/max(p.get("total",1),1), text=f"🧠 ML Scoring {p.get('scored',0)}/{p.get('total',0)}")
+    st.progress(p.get("scored",0)/max(p.get("total",1),1), text=f"ML Scoring {p.get('scored',0)}/{p.get('total',0)}")
 
 # ── CONTROL BAR (replaces sidebar — always visible) ──
 st.markdown('<div class="sec-hdr">COMMAND PANEL</div>', unsafe_allow_html=True)
@@ -173,9 +173,9 @@ with cb2:
         api(f"/fetch?limit={lim}", method="POST")
         st.toast(f"Fetching {lim} IOCs…", icon="📡"); time.sleep(1); st.rerun()
 with cb3:
-    if st.button("⚡ ML SCORING", disabled=(fetch_running or ml_running), use_container_width=True):
+    if st.button(" ML SCORING", disabled=(fetch_running or ml_running), use_container_width=True):
         api("/ml/score", method="POST")
-        st.toast("ML scoring started", icon="🧠"); time.sleep(1); st.rerun()
+        st.toast("ML scoring started",); time.sleep(1); st.rerun()
 with cb4:
     if st.button("🗑 CLEAR DB", disabled=fetch_running, use_container_width=True):
         r = api("/clear", method="POST")
@@ -236,7 +236,7 @@ with tab1:
 with tab2:
     st.markdown('<div class="sec-hdr">ML RISK ENGINE — RF+XGBOOST STACKING ENSEMBLE</div>', unsafe_allow_html=True)
     if df.empty or "ml_score" not in df.columns or df["ml_score"].isna().all():
-        st.info("Click ⚡ ML SCORING above after fetching IOCs.")
+        st.info("Click ML SCORING above after fetching IOCs.")
     else:
         sdf = df[df["ml_score"].notna()].copy()
         m1,m2,m3,m4,m5 = st.columns(5)
@@ -434,8 +434,7 @@ st.markdown("""
     </a>
   </div>
   <div class="brand" style="font-size:0.62rem;color:#484f58;display:flex;align-items:center;gap:6px">
-    <span style="font-size:0.72rem;font-weight:800;color:#21e06a;letter-spacing:2px">🛡 SENTINELTI</span>
-    <span style="color:#21262d">·</span>MSc Sem-4 · Somaiya VV
+    <span style="font-size:0.72rem;font-weight:800;color:#21e06a;letter-spacing:2px">🛡 SENTINELTI </span>
     <span style="color:#21262d">·</span>© 2026
   </div>
 </div>
