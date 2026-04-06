@@ -17,6 +17,23 @@ html,body,[class*="css"]{font-family:'JetBrains Mono','Fira Code','Courier New',
 #MainMenu,footer,header,[data-testid="stSidebar"],[data-testid="collapsedControl"]{display:none!important;visibility:hidden!important;}
 .block-container{padding:0 0.8rem 4rem 0.8rem!important;max-width:100%!important;}
 
+<head>
+<title>SentinelTI || Explainable Threat Intelligence</title>
+
+<meta name="title" content="An Explainable Machine Learning Framework for IP Threat Intelligence and Maliciousness Risk Scoring">
+<meta name="description" content="— Soham Shah | SentinelTI SOC Dashboard for real-time threat intelligence and ML-based risk scoring">
+<!-- Open Graph (LinkedIn / WhatsApp / Facebook) -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://sentinelit.up.railway.app/">
+<meta property="og:title" content="An Explainable Machine Learning Framework for IP Threat Intelligence and Maliciousness Risk Scoring">
+<meta property="og:description" content="— Soham Shah">
+
+<!-- Twitter -->
+<meta property="twitter:card" content="summary_large_image">
+<meta property="twitter:title" content="An Explainable Machine Learning Framework for IP Threat Intelligence and Maliciousness Risk Scoring">
+<meta property="twitter:description" content="— Soham Shah">
+</head>
+
 /* ── Command bar ── */
 .cmd-bar{background:linear-gradient(90deg,#0d1117,#161b22);border-bottom:1px solid #21e06a22;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin:-1rem -0.8rem 0.8rem -0.8rem;}
 .cmd-logo{font-size:1rem;font-weight:800;letter-spacing:2px;color:#21e06a;}
