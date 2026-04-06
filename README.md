@@ -1,4 +1,4 @@
-# 🛡️ SentinelTI — Explainable Threat Intelligence Dashboard
+# 🛡️ SentinelTI - Explainable Threat Intelligence Dashboard
 
 **MSc Sem-4 Research Project || Somaiya Vidyavihar University**
 
