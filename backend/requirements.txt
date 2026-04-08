@@ -1,9 +1,9 @@
 fastapi
 uvicorn[standard]
 requests
+pycountry==23.12.11
 pymongo[srv]
 python-dotenv
-pycountry
 python-dateutil
 scikit-learn
 xgboost
