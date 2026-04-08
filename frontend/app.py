@@ -219,40 +219,7 @@ tab1,tab2,tab3,tab4,tab5,tab6 = st.tabs([
     "OFFENSE QUEUE","ML RISK ENGINE","SHAP · GLOBAL","SHAP · LOCAL","ANALYTICS","THREAT INTEL · LIVE"
 ])
 
-# ── TAB 1 ──
-with tab1:
-    st.markdown('<div class="sec-hdr">ACTIVE OFFENSE QUEUE — INDICATORS OF COMPROMISE</div>', unsafe_allow_html=True)
-    if df.empty and not fetch_running:
-        st.markdown('<div style="text-align:center;padding:60px;color:#484f58;border:1px dashed #21262d;border-radius:6px;margin-top:20px"><div style="font-size:2.5rem">📡</div><div style="font-size:0.9rem;margin-top:12px;letter-spacing:1px">NO ACTIVE THREATS</div><div style="font-size:0.7rem;margin-top:6px">Click FETCH FEEDS above to pull live threat intelligence</div></div>', unsafe_allow_html=True)
-    elif df.empty and fetch_running:
-        st.info(f"⏳ Fetching IOCs… {enr_n}/{total_iocs} enriched. Table populates automatically.")
-        time.sleep(3); st.rerun()
-    else:
-        if fetch_running:
-            st.info(f"⏳ Enrichment running — {enr_n}/{total_iocs} done. Updates every 5s.")
-        fc1,fc2,fc3,fc4 = st.columns([2,1.5,1.5,2])
-        with fc1: search  = st.text_input("🔍", placeholder="Search IP or source…", label_visibility="collapsed")
-        with fc2: risk_f  = st.multiselect("RISK", ["HIGH","MEDIUM","LOW"], default=["HIGH","MEDIUM","LOW"], label_visibility="collapsed")
-        with fc3: enr_f   = st.selectbox("STATUS", ["All","ENRICHED","PENDING"], label_visibility="collapsed")
-        with fc4: sort_by = st.selectbox("SORT", ["ml_score ↓","abuse_reports ↓","confidence_score ↓","last_seen ↓"], label_visibility="collapsed")
-        fdf = df.copy()
-        if risk_f and "ml_risk" in fdf.columns: fdf = fdf[fdf["ml_risk"].isin(risk_f)]
-        if enr_f=="ENRICHED":  fdf = fdf[fdf["enriched"]==True]
-        elif enr_f=="PENDING": fdf = fdf[fdf["enriched"]!=True]
-        if search and "indicator" in fdf.columns:
-            mask = fdf["indicator"].str.contains(search, na=False)
-            if "sources" in fdf.columns: mask |= fdf["sources"].str.contains(search, na=False, case=False)
-            fdf = fdf[mask]
-        sc = sort_by.split(" ")[0]
-        if sc in fdf.columns: fdf = fdf.sort_values(sc, ascending=False, na_position="last")
-        show = [c for c in ["indicator","ml_risk","ml_score","sources","confidence_score","abuse_reports","country","city","isp","STATUS","first_seen","last_seen"] if c in fdf.columns]
-        ren  = {"indicator":"IP ADDRESS","ml_risk":"SEVERITY","ml_score":"RISK SCORE","sources":"FEED SOURCE","confidence_score":"CONFIDENCE %","abuse_reports":"ABUSE REPORTS","country":"COUNTRY","city":"CITY","isp":"ISP / ASN","STATUS":"STATUS","first_seen":"FIRST SEEN","last_seen":"LAST SEEN"}
-        st.dataframe(fdf[show].rename(columns=ren).style.apply(crow,axis=1), width="stretch", height=480, hide_index=True)
-        c1,c2,c3 = st.columns(3)
-        c1.caption(f"Showing **{len(fdf)}** of **{len(df)}** indicators")
-        if fetch_running: c2.caption(f"⏳ Enriching {enr_n}/{total_iocs}…")
-        c3.caption(f"🕐 {now_utc()}")
-        if fetch_running: time.sleep(5); st.rerun()
+# # ── TAB 1 ──
 # with tab1:
 #     st.markdown('<div class="sec-hdr">ACTIVE OFFENSE QUEUE — INDICATORS OF COMPROMISE</div>', unsafe_allow_html=True)
 #     if df.empty and not fetch_running:
@@ -286,6 +253,40 @@ with tab1:
 #         if fetch_running: c2.caption(f"⏳ Enriching {enr_n}/{total_iocs}…")
 #         c3.caption(f"🕐 {now_utc()}")
 #         if fetch_running: time.sleep(5); st.rerun()
+
+with tab1:
+    st.markdown('<div class="sec-hdr">ACTIVE OFFENSE QUEUE — INDICATORS OF COMPROMISE</div>', unsafe_allow_html=True)
+    if df.empty and not fetch_running:
+        st.markdown('<div style="text-align:center;padding:60px;color:#484f58;border:1px dashed #21262d;border-radius:6px;margin-top:20px"><div style="font-size:2.5rem">📡</div><div style="font-size:0.9rem;margin-top:12px;letter-spacing:1px">NO ACTIVE THREATS</div><div style="font-size:0.7rem;margin-top:6px">Click FETCH FEEDS above to pull live threat intelligence</div></div>', unsafe_allow_html=True)
+    elif df.empty and fetch_running:
+        st.info(f"⏳ Fetching IOCs… {enr_n}/{total_iocs} enriched. Table populates automatically.")
+        time.sleep(3); st.rerun()
+    else:
+        if fetch_running:
+            st.info(f"⏳ Enrichment running — {enr_n}/{total_iocs} done. Updates every 5s.")
+        fc1,fc2,fc3,fc4 = st.columns([2,1.5,1.5,2])
+        with fc1: search  = st.text_input("🔍", placeholder="Search IP or source…", label_visibility="collapsed")
+        with fc2: risk_f  = st.multiselect("RISK", ["HIGH","MEDIUM","LOW"], default=["HIGH","MEDIUM","LOW"], label_visibility="collapsed")
+        with fc3: enr_f   = st.selectbox("STATUS", ["All","ENRICHED","PENDING"], label_visibility="collapsed")
+        with fc4: sort_by = st.selectbox("SORT", ["ml_score ↓","abuse_reports ↓","confidence_score ↓","last_seen ↓"], label_visibility="collapsed")
+        fdf = df.copy()
+        if risk_f and "ml_risk" in fdf.columns: fdf = fdf[fdf["ml_risk"].isin(risk_f)]
+        if enr_f=="ENRICHED":  fdf = fdf[fdf["enriched"]==True]
+        elif enr_f=="PENDING": fdf = fdf[fdf["enriched"]!=True]
+        if search and "indicator" in fdf.columns:
+            mask = fdf["indicator"].str.contains(search, na=False)
+            if "sources" in fdf.columns: mask |= fdf["sources"].str.contains(search, na=False, case=False)
+            fdf = fdf[mask]
+        sc = sort_by.split(" ")[0]
+        if sc in fdf.columns: fdf = fdf.sort_values(sc, ascending=False, na_position="last")
+        show = [c for c in ["indicator","ml_risk","ml_score","sources","confidence_score","abuse_reports","country","city","isp","STATUS","first_seen","last_seen"] if c in fdf.columns]
+        ren  = {"indicator":"IP ADDRESS","ml_risk":"SEVERITY","ml_score":"RISK SCORE","sources":"FEED SOURCE","confidence_score":"CONFIDENCE %","abuse_reports":"ABUSE REPORTS","country":"COUNTRY","city":"CITY","isp":"ISP / ASN","STATUS":"STATUS","first_seen":"FIRST SEEN","last_seen":"LAST SEEN"}
+        st.dataframe(fdf[show].rename(columns=ren).style.apply(crow,axis=1), width="stretch", height=480, hide_index=True)
+        c1,c2,c3 = st.columns(3)
+        c1.caption(f"Showing **{len(fdf)}** of **{len(df)}** indicators")
+        if fetch_running: c2.caption(f"⏳ Enriching {enr_n}/{total_iocs}…")
+        c3.caption(f"🕐 {now_utc()}")
+        if fetch_running: time.sleep(5); st.rerun()
 
 # ── TAB 2 ──
 with tab2:
@@ -326,17 +327,42 @@ with tab3:
     st.markdown('<div class="sec-hdr">SHAP GLOBAL — FEATURE IMPORTANCE ACROSS ALL IOCs</div>', unsafe_allow_html=True)
     st.caption("Mean |SHAP value| — which features drive malicious IP predictions globally")
     if st.button("⚡ COMPUTE GLOBAL SHAP", type="primary"):
-        with st.spinner("Computing SHAP…"):
+        with st.spinner("Computing SHAP across RF ensemble…"):
             result = api("/ml/shap/global")
         if result and "global_shap" in result:
             shap_df = pd.DataFrame(result["global_shap"]).sort_values("importance",ascending=False)
             max_imp = shap_df["importance"].max()
+            st.markdown('<div class="sec-hdr">FEATURE RANKING</div>', unsafe_allow_html=True)
             for _,row in shap_df.iterrows():
                 pw = int(row["importance"]/max(max_imp,0.001)*100)
-                st.markdown(f'<div style="display:grid;grid-template-columns:140px 1fr 70px 55px;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #21262d18"><div style="font-size:0.7rem;color:#c9d1d9;font-family:monospace">{row["feature"]}</div><div style="background:#21262d;border-radius:2px;height:12px"><div style="width:{pw}%;background:linear-gradient(90deg,#58a6ff66,#58a6ff);height:12px;border-radius:2px"></div></div><div style="font-size:0.68rem;color:#58a6ff;text-align:right">{row["importance"]:.5f}</div><div style="font-size:0.68rem;color:#8b949e;text-align:right">{row["pct"]:.1f}%</div></div>', unsafe_allow_html=True)
+                st.markdown(f'<div style="display:grid;grid-template-columns:160px 1fr 80px 60px;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #21262d18"><div style="font-size:0.72rem;color:#c9d1d9;font-family:monospace">{row["feature"]}</div><div style="background:#21262d;border-radius:2px;height:14px"><div style="width:{pw}%;background:linear-gradient(90deg,#58a6ff66,#58a6ff);height:14px;border-radius:2px"></div></div><div style="font-size:0.7rem;color:#58a6ff;text-align:right">{row["importance"]:.5f}</div><div style="font-size:0.7rem;color:#8b949e;text-align:right">{row["pct"]:.1f}%</div></div>', unsafe_allow_html=True)
+            st.markdown('<div class="sec-hdr">FEATURE LEGEND</div>', unsafe_allow_html=True)
+            legend = {"confidence_pct":"AbuseIPDB confidence score (0–100)","abuse_reports":"Total historical abuse reports",
+                      "vt_detections":"VirusTotal malicious vendor count","recency_hrs":"Hours since last abuse report",
+                      "freshness":"Recency score (1=very fresh)","geo_risk":"High-risk country origin",
+                      "multi_source":"Flagged by >1 feed","attack_type_count":"Distinct attack categories",
+                      "source_score":"Normalised feed weight","vt_total":"VirusTotal vendors checked"}
+            st.dataframe(pd.DataFrame([{"Feature":k,"Description":v} for k,v in legend.items()]),
+                         use_container_width=True, hide_index=True)
         elif result and "error" in result: st.error(f"SHAP error: {result['error']}")
     else:
-        st.markdown('<div style="text-align:center;padding:40px;color:#484f58;border:1px dashed #21262d;border-radius:6px"><div style="font-size:1.5rem">🔍</div><div style="font-size:0.8rem;margin-top:8px">Click COMPUTE GLOBAL SHAP</div></div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center;padding:40px;color:#484f58;border:1px dashed #21262d;border-radius:6px"><div style="font-size:1.5rem">🔍</div><div style="font-size:0.8rem;margin-top:8px">Click COMPUTE GLOBAL SHAP to analyse feature importance</div><div style="font-size:0.65rem;margin-top:4px;color:#21262d">Requires ML Scoring to be complete</div></div>', unsafe_allow_html=True)
+# with tab3:
+#     st.markdown('<div class="sec-hdr">SHAP GLOBAL — FEATURE IMPORTANCE ACROSS ALL IOCs</div>', unsafe_allow_html=True)
+#     st.caption("Mean |SHAP value| — which features drive malicious IP predictions globally")
+#     if st.button("⚡ COMPUTE GLOBAL SHAP", type="primary"):
+#         with st.spinner("Computing SHAP…"):
+#             result = api("/ml/shap/global")
+#         if result and "global_shap" in result:
+#             shap_df = pd.DataFrame(result["global_shap"]).sort_values("importance",ascending=False)
+#             max_imp = shap_df["importance"].max()
+#             for _,row in shap_df.iterrows():
+#                 pw = int(row["importance"]/max(max_imp,0.001)*100)
+#                 st.markdown(f'<div style="display:grid;grid-template-columns:140px 1fr 70px 55px;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #21262d18"><div style="font-size:0.7rem;color:#c9d1d9;font-family:monospace">{row["feature"]}</div><div style="background:#21262d;border-radius:2px;height:12px"><div style="width:{pw}%;background:linear-gradient(90deg,#58a6ff66,#58a6ff);height:12px;border-radius:2px"></div></div><div style="font-size:0.68rem;color:#58a6ff;text-align:right">{row["importance"]:.5f}</div><div style="font-size:0.68rem;color:#8b949e;text-align:right">{row["pct"]:.1f}%</div></div>', unsafe_allow_html=True)
+#         elif result and "error" in result: st.error(f"SHAP error: {result['error']}")
+#     else:
+#         st.markdown('<div style="text-align:center;padding:40px;color:#484f58;border:1px dashed #21262d;border-radius:6px"><div style="font-size:1.5rem">🔍</div><div style="font-size:0.8rem;margin-top:8px">Click COMPUTE GLOBAL SHAP</div></div>', unsafe_allow_html=True)
+
 
 # ── TAB 4 ──
 with tab4:
