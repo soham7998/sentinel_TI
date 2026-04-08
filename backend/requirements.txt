@@ -3,7 +3,7 @@ uvicorn[standard]
 requests
 pymongo[srv]
 python-dotenv
-geoip2
+pycountry
 python-dateutil
 scikit-learn
 xgboost
