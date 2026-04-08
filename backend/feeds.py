@@ -260,25 +260,50 @@ def _enrich_abuseipdb(ip: str) -> dict:
         logger.warning(f"AbuseIPDB enrichment error for {ip}: {e}")
         return {}
 
+# ── Helpers ─────────────────────────────
+import pycountry
 
-def _enrich_geoip(ip: str, geoip_path: str = "/app/geoip/GeoLite2-City.mmdb") -> dict:
-    """GeoIP + ASN lookup using local MaxMind DB."""
+def country_name(code):
     try:
-        import geoip2.database
-        with geoip2.database.Reader(geoip_path) as reader:
-            resp    = reader.city(ip)
-            country = resp.country.iso_code or ""
-            city    = resp.city.name or ""
-            lat     = resp.location.latitude
-            lon     = resp.location.longitude
-            return {
-                "country":      resp.country.name or "",
-                "country_code": country,
-                "city":         city,
-                "latitude":     lat,
-                "longitude":    lon,
-            }
-    except Exception:
+        return pycountry.countries.get(alpha_2=code).name
+    except:
+        return code
+        
+def _enrich_ipinfo(ip: str) -> dict:
+    """
+    GeoIP enrichment using ipinfo.io (no file, works on Railway)
+    Returns: country, country_code, city, lat, lon, isp
+    """
+    try:
+        url = f"https://ipinfo.io/{ip}/json"
+        r = requests.get(url, timeout=5)
+
+        if r.status_code != 200:
+            logger.warning(f"ipinfo {ip} → HTTP {r.status_code}")
+            return {}
+
+        d = r.json()
+
+        # location comes as "lat,lon"
+        loc = d.get("loc", "")
+        lat, lon = None, None
+        if loc and "," in loc:
+            try:
+                lat, lon = map(float, loc.split(","))
+            except:
+                pass
+
+        return {
+            "country": country_name(d.get("country", "")),   # US, CN, etc.
+            "country_code": d.get("country", ""),
+            "city":         d.get("city", ""),
+            "latitude":     lat,
+            "longitude":    lon,
+            "isp":          d.get("org", ""),
+        }
+
+    except Exception as e:
+        logger.warning(f"ipinfo enrichment error for {ip}: {e}")
         return {}
 
 
@@ -303,7 +328,7 @@ def enrich_indicators(collection) -> None:
         update  = {}
 
         # 1. GeoIP
-        geo = _enrich_geoip(ip)
+        geo = _enrich_ipinfo(ip)
         update.update(geo)
 
         # 2. AbuseIPDB
