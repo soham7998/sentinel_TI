@@ -220,40 +220,6 @@ tab1,tab2,tab3,tab4,tab5,tab6 = st.tabs([
 ])
 
 # # ── TAB 1 ──
-# with tab1:
-#     st.markdown('<div class="sec-hdr">ACTIVE OFFENSE QUEUE — INDICATORS OF COMPROMISE</div>', unsafe_allow_html=True)
-#     if df.empty and not fetch_running:
-#         st.markdown('<div style="text-align:center;padding:60px;color:#484f58;border:1px dashed #21262d;border-radius:6px;margin-top:20px"><div style="font-size:2.5rem">📡</div><div style="font-size:0.9rem;margin-top:12px;letter-spacing:1px">NO ACTIVE THREATS</div><div style="font-size:0.7rem;margin-top:6px">Click FETCH FEEDS above to pull live threat intelligence</div></div>', unsafe_allow_html=True)
-#     elif df.empty and fetch_running:
-#         st.info(f"⏳ Fetching IOCs… {enr_n}/{total_iocs} enriched. Table populates automatically.")
-#         time.sleep(3); st.rerun()
-#     else:
-#         if fetch_running:
-#             st.info(f"⏳ Enrichment running — {enr_n}/{total_iocs} done. Updates every 5s.")
-#         fc1,fc2,fc3,fc4 = st.columns([2,1.5,1.5,2])
-#         with fc1: search  = st.text_input("🔍", placeholder="Search IP or source…", label_visibility="collapsed")
-#         with fc2: risk_f  = st.multiselect("RISK", ["HIGH","MEDIUM","LOW"], default=["HIGH","MEDIUM","LOW"], label_visibility="collapsed")
-#         with fc3: enr_f   = st.selectbox("STATUS", ["All","ENRICHED","PENDING"], label_visibility="collapsed")
-#         with fc4: sort_by = st.selectbox("SORT", ["ml_score ↓","abuse_reports ↓","confidence_score ↓","last_seen ↓"], label_visibility="collapsed")
-#         fdf = df.copy()
-#         if risk_f and "ml_risk" in fdf.columns: fdf = fdf[fdf["ml_risk"].isin(risk_f)]
-#         if enr_f=="ENRICHED":  fdf = fdf[fdf["enriched"]==True]
-#         elif enr_f=="PENDING": fdf = fdf[fdf["enriched"]!=True]
-#         if search and "indicator" in fdf.columns:
-#             mask = fdf["indicator"].str.contains(search, na=False)
-#             if "sources" in fdf.columns: mask |= fdf["sources"].str.contains(search, na=False, case=False)
-#             fdf = fdf[mask]
-#         sc = sort_by.split(" ")[0]
-#         if sc in fdf.columns: fdf = fdf.sort_values(sc, ascending=False, na_position="last")
-#         show = [c for c in ["indicator","ml_risk","ml_score","sources","confidence_score","abuse_reports","country","city","isp","STATUS","first_seen","last_seen"] if c in fdf.columns]
-#         ren  = {"indicator":"IP ADDRESS","ml_risk":"SEVERITY","ml_score":"RISK SCORE","sources":"FEED SOURCE","confidence_score":"CONFIDENCE %","abuse_reports":"ABUSE REPORTS","country":"COUNTRY","city":"CITY","isp":"ISP / ASN","STATUS":"STATUS","first_seen":"FIRST SEEN","last_seen":"LAST SEEN"}
-#         st.dataframe(fdf[show].rename(columns=ren).style.apply(crow,axis=1), width="stretch", height=480, hide_index=True)
-#         c1,c2,c3 = st.columns(3)
-#         c1.caption(f"Showing **{len(fdf)}** of **{len(df)}** indicators")
-#         if fetch_running: c2.caption(f"⏳ Enriching {enr_n}/{total_iocs}…")
-#         c3.caption(f"🕐 {now_utc()}")
-#         if fetch_running: time.sleep(5); st.rerun()
-
 with tab1:
     st.markdown('<div class="sec-hdr">ACTIVE OFFENSE QUEUE — INDICATORS OF COMPROMISE</div>', unsafe_allow_html=True)
     if df.empty and not fetch_running:
