@@ -488,7 +488,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ── LIVE CLOCK — always ticks 30s then rerun ──
-for _ in range(30):
+while True:
     clock_slot.markdown(f"""<div class="cmd-bar">
   <div><div class="cmd-logo">🛡 SENTINELTI</div>
        <div class="cmd-sub">EXPLAINABLE THREAT INTELLIGENCE PLATFORM</div></div>
@@ -498,5 +498,5 @@ for _ in range(30):
   </div>
 </div>""", unsafe_allow_html=True)
     time.sleep(1)
-
-st.rerun()
+    if auto_refresh:
+        st.rerun()
