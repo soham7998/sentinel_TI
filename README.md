@@ -10,7 +10,7 @@
 
 SentinelTI is a real-time, SOC-ready threat intelligence dashboard that:
 - Ingests IP indicators from **Abuse.ch** and **CINS Army** feeds
-- Enriches them asynchronously via **VirusTotal**, **AbuseIPDB**, and **GeoIP**
+- Enriches them asynchronously via **VirusTotal**, **AbuseIPDB**, and **IPInfo**
 - Scores maliciousness using a **Random Forest + XGBoost stacking ensemble**
 - Explains every prediction using **SHAP** (global + local explainability)
 - Displays everything on a **Streamlit SOC dashboard** with LOW / MEDIUM / HIGH risk tiers
