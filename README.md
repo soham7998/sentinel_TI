@@ -108,7 +108,7 @@ sentinel_TI/
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── geoip/
-│   └── GeoLite2-City.mmdb
+│   └── IPInfo
 ├── docker-compose.yml
 ├── .env.sample
 └── README.md
